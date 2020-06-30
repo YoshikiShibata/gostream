@@ -1,0 +1,27 @@
+package gostream
+
+import (
+	"fmt"
+	"testing"
+)
+
+func TestAsStream_int(t *testing.T) {
+	s := AsStream([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+
+	s.Filter(func(t int) bool {
+		return t&1 == 0
+	}).ForEach(func(t int) {
+		fmt.Printf("t: %d\n", t)
+	})
+}
+
+func TestAsStream_string(t *testing.T) {
+	s := AsStream([]string{"a", "b", "ab", "c", "abc", "d", "abcd"})
+
+	s.Filter(func(t string) bool {
+		return len(t) > 1
+	}).ForEach(func(t string) {
+		fmt.Printf("t: %q\n", t)
+	})
+
+}
