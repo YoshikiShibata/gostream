@@ -1,0 +1,52 @@
+package gostream
+
+type genericStreamImpl(type T) struct {
+	prevReq  chan struct{}
+	prevData chan T
+	nextReq  chan struct{}
+	nextData chan T
+}
+
+func (gsImpl *genericStreamImpl(T)) Filter(predicate Predicate(T)) Stream(T) {
+	gsImpl2 := &genericStreamImpl(T){
+		prevReq:  gsImpl.nextReq,
+		prevData: gsImpl.nextData,
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+
+	go gsImpl2.filter(predicate)
+
+	return gsImpl2
+}
+
+func (gsImpl *genericStreamImpl(T)) filter(predicate Predicate(T)) {
+	for range gsImpl.nextReq {
+		gsImpl.prevReq <- struct{}{}
+		data, ok := <-gsImpl.prevData
+		if !ok {
+			close(gsImpl.nextData)
+			close(gsImpl.prevReq)
+			return
+		}
+
+		for !predicate(data) {
+			gsImpl.prevReq <- struct{}{}
+			data, ok = <-gsImpl.prevData
+			if !ok {
+				close(gsImpl.nextData)
+				close(gsImpl.prevReq)
+				return
+			}
+		}
+		gsImpl.nextData <- data
+	}
+}
+
+func (gsImpl *genericStreamImpl(T)) ForEach(action Consumer(T)) {
+	gsImpl.nextReq <- struct{}{}
+	for t := range gsImpl.nextData {
+		action(t)
+		gsImpl.nextReq <- struct{}{}
+	}
+}

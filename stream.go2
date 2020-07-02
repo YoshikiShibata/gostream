@@ -1,116 +1,74 @@
 package gostream
 
+import (
+	"fmt"
+)
+
 type Consumer(type T) func(t T)
 type Predicate(type T) func(t T) bool
+type Function(type T, R) func(t T) R
 
 type Stream(type T) interface {
+	// Filter returns a stream consisting of the elements of this stream
+	// that mathe the give predicate.
+	Filter(predicate Predicate(T)) Stream(T)
+
 	// ForEach performs an action for each element of this stream.
 	ForEach(action Consumer(T))
-
-	Filter(predicate Predicate(T)) Stream(T)
 }
 
-type sliceStreamImpl(type T) struct {
-	data        []T
-	dataRequest chan struct{}
-	dataChan    chan T
+type mapStreamImpl(type T) struct {
+	nextReq  chan struct{}
+	nextData chan T
 }
 
-func newSliceStreamImpl(type T)(data []T) *sliceStreamImpl(T) {
-	ssImpl := &sliceStreamImpl(T){
-		data:        data,
-		dataRequest: make(chan struct{}),
-		dataChan:    make(chan T),
+// Map returns a stream consisting of the results of applying the given
+// function to the elements of the given stream.
+func Map(type T, R)(stream Stream(T), mapper Function(T, R)) Stream(R) {
+	gsImpl, ok := stream.(*genericStreamImpl(T))
+	if !ok {
+		panic(fmt.Sprintf("Unsupported Type: %T", stream))
 	}
+
+	mapSImpl := &mapStreamImpl(R){
+		nextReq:  make(chan struct{}),
+		nextData: make(chan R),
+	}
+
 	go func() {
-		i := 0
-		for range ssImpl.dataRequest {
-			if i == len(ssImpl.data) {
-				close(ssImpl.dataChan)
+		for range mapSImpl.nextReq {
+			gsImpl.nextReq <- struct{}{}
+			t, ok := <-gsImpl.nextData
+			if !ok {
+				close(mapSImpl.nextData)
+				close(gsImpl.nextReq)
 				return
 			}
-			if i < len(ssImpl.data) {
-				ssImpl.dataChan <- ssImpl.data[i]
-				i++
-			}
+			r := mapper(t)
+			mapSImpl.nextData <- r
 		}
-		close(ssImpl.dataChan)
 	}()
 
-	return ssImpl
+	return mapSImpl
 }
 
-type genericStreamImpl(type T) struct {
-	prevDataRequest chan struct{}
-	prevDataChan    chan T
-	nextDataRequest chan struct{}
-	nextDataChan    chan T
-}
-
-func (ssImpl *sliceStreamImpl(T)) Filter(predicate Predicate(T)) Stream(T) {
+func (mapSImpl *mapStreamImpl(T)) Filter(predicate Predicate(T)) Stream(T) {
 	gsImpl := &genericStreamImpl(T){
-		prevDataRequest: ssImpl.dataRequest,
-		prevDataChan:    ssImpl.dataChan,
-		nextDataRequest: make(chan struct{}),
-		nextDataChan:    make(chan T),
+		prevReq:  mapSImpl.nextReq,
+		prevData: mapSImpl.nextData,
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
 	}
+
 	go gsImpl.filter(predicate)
 
 	return gsImpl
 }
 
-func (ssImpl *sliceStreamImpl(T)) ForEach(action Consumer(T)) {
-	ssImpl.dataRequest <- struct{}{}
-	for t := range ssImpl.dataChan {
+func (mapSImpl *mapStreamImpl(T)) ForEach(action Consumer(T)) {
+	mapSImpl.nextReq <- struct{}{}
+	for t := range mapSImpl.nextData {
 		action(t)
-		ssImpl.dataRequest <- struct{}{}
+		mapSImpl.nextReq <- struct{}{}
 	}
-}
-
-func (gsImpl *genericStreamImpl(T)) Filter(predicate Predicate(T)) Stream(T) {
-	gsImpl2 := &genericStreamImpl(T){
-		prevDataRequest: gsImpl.nextDataRequest,
-		prevDataChan:    gsImpl.nextDataChan,
-		nextDataRequest: make(chan struct{}),
-		nextDataChan:    make(chan T),
-	}
-
-	go gsImpl2.filter(predicate)
-
-	return gsImpl2
-}
-
-func (gsImpl *genericStreamImpl(T)) filter(predicate Predicate(T)) {
-	for range gsImpl.nextDataRequest {
-		gsImpl.prevDataRequest <- struct{}{}
-		data, ok := <-gsImpl.prevDataChan
-		if !ok {
-			close(gsImpl.nextDataChan)
-			close(gsImpl.prevDataRequest)
-			return
-		}
-
-		for !predicate(data) {
-			gsImpl.prevDataRequest <- struct{}{}
-			data, ok = <-gsImpl.prevDataChan
-			if !ok {
-				close(gsImpl.nextDataChan)
-				close(gsImpl.prevDataRequest)
-				return
-			}
-		}
-		gsImpl.nextDataChan <- data
-	}
-}
-
-func (gsImpl *genericStreamImpl(T)) ForEach(action Consumer(T)) {
-	gsImpl.nextDataRequest <- struct{}{}
-	for t := range gsImpl.nextDataChan {
-		action(t)
-		gsImpl.nextDataRequest <- struct{}{}
-	}
-}
-
-func AsStream(type T)(slice []T) Stream(T) {
-	return newSliceStreamImpl(slice)
 }

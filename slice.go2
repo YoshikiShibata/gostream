@@ -1,0 +1,55 @@
+package gostream
+
+type sliceStreamImpl(type T) struct {
+	data     []T
+	prevReq  chan struct{}
+	prevData chan T
+}
+
+func newSliceStreamImpl(type T)(data []T) *sliceStreamImpl(T) {
+	ssImpl := &sliceStreamImpl(T){
+		data:     data,
+		prevReq:  make(chan struct{}),
+		prevData: make(chan T),
+	}
+	go func() {
+		i := 0
+		for range ssImpl.prevReq {
+			if i == len(ssImpl.data) {
+				close(ssImpl.prevData)
+				return
+			}
+			if i < len(ssImpl.data) {
+				ssImpl.prevData <- ssImpl.data[i]
+				i++
+			}
+		}
+		close(ssImpl.prevData)
+	}()
+
+	return ssImpl
+}
+
+func (ssImpl *sliceStreamImpl(T)) Filter(predicate Predicate(T)) Stream(T) {
+	gsImpl := &genericStreamImpl(T){
+		prevReq:  ssImpl.prevReq,
+		prevData: ssImpl.prevData,
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+	go gsImpl.filter(predicate)
+
+	return gsImpl
+}
+
+func (ssImpl *sliceStreamImpl(T)) ForEach(action Consumer(T)) {
+	ssImpl.prevReq <- struct{}{}
+	for t := range ssImpl.prevData {
+		action(t)
+		ssImpl.prevReq <- struct{}{}
+	}
+}
+
+func AsStream(type T)(slice []T) Stream(T) {
+	return newSliceStreamImpl(slice)
+}
