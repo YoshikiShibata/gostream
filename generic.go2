@@ -1,52 +1,93 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
 package gostream
 
-type genericStreamImpl(type T) struct {
+type genericStream(type T) struct {
 	prevReq  chan struct{}
 	prevData chan T
 	nextReq  chan struct{}
 	nextData chan T
 }
 
-func (gsImpl *genericStreamImpl(T)) Filter(predicate Predicate(T)) Stream(T) {
-	gsImpl2 := &genericStreamImpl(T){
-		prevReq:  gsImpl.nextReq,
-		prevData: gsImpl.nextData,
+func (gs *genericStream(T)) Filter(predicate Predicate(T)) Stream(T) {
+	newGS := &genericStream(T){
+		prevReq:  gs.nextReq,
+		prevData: gs.nextData,
 		nextReq:  make(chan struct{}),
 		nextData: make(chan T),
 	}
 
-	go gsImpl2.filter(predicate)
+	go newGS.filter(predicate)
 
-	return gsImpl2
+	return newGS
 }
 
-func (gsImpl *genericStreamImpl(T)) filter(predicate Predicate(T)) {
-	for range gsImpl.nextReq {
-		gsImpl.prevReq <- struct{}{}
-		data, ok := <-gsImpl.prevData
+func (gs *genericStream(T)) Distinct() Stream(T) {
+	newGS := &genericStream(T){
+		prevReq:  gs.nextReq,
+		prevData: gs.nextData,
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+
+	go newGS.distinct()
+
+	return newGS
+}
+
+func (gs *genericStream(T)) filter(predicate Predicate(T)) {
+	for range gs.nextReq {
+		gs.prevReq <- struct{}{}
+		data, ok := <-gs.prevData
 		if !ok {
-			close(gsImpl.nextData)
-			close(gsImpl.prevReq)
+			close(gs.nextData)
+			close(gs.prevReq)
 			return
 		}
 
 		for !predicate(data) {
-			gsImpl.prevReq <- struct{}{}
-			data, ok = <-gsImpl.prevData
+			gs.prevReq <- struct{}{}
+			data, ok = <-gs.prevData
 			if !ok {
-				close(gsImpl.nextData)
-				close(gsImpl.prevReq)
+				close(gs.nextData)
+				close(gs.prevReq)
 				return
 			}
 		}
-		gsImpl.nextData <- data
+		gs.nextData <- data
 	}
 }
 
-func (gsImpl *genericStreamImpl(T)) ForEach(action Consumer(T)) {
-	gsImpl.nextReq <- struct{}{}
-	for t := range gsImpl.nextData {
+func (gs *genericStream(T)) distinct() {
+	seen := make(map[T]bool)
+	
+	for range gs.nextReq {
+		gs.prevReq <- struct{}{}
+		data, ok := <-gs.prevData
+		if !ok {
+			close(gs.nextData)
+			close(gs.prevReq)
+			return
+		}
+
+		for seen[data] {
+			gs.prevReq <- struct{}{}
+			data, ok = <-gs.prevData
+			if !ok {
+				close(gs.nextData)
+				close(gs.prevReq)
+				return
+			}
+		}
+		gs.nextData <- data
+		seen[data] = true
+	}
+}
+
+func (gs *genericStream(T)) ForEach(action Consumer(T)) {
+	gs.nextReq <- struct{}{}
+	for t := range gs.nextData {
 		action(t)
-		gsImpl.nextReq <- struct{}{}
+		gs.nextReq <- struct{}{}
 	}
 }

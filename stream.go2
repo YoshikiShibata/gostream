@@ -1,8 +1,6 @@
-package gostream
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
 
-import (
-	"fmt"
-)
+package gostream
 
 type Consumer(type T) func(t T)
 type Predicate(type T) func(t T) bool
@@ -15,60 +13,8 @@ type Stream(type T) interface {
 
 	// ForEach performs an action for each element of this stream.
 	ForEach(action Consumer(T))
-}
 
-type mapStreamImpl(type T) struct {
-	nextReq  chan struct{}
-	nextData chan T
-}
-
-// Map returns a stream consisting of the results of applying the given
-// function to the elements of the given stream.
-func Map(type T, R)(stream Stream(T), mapper Function(T, R)) Stream(R) {
-	gsImpl, ok := stream.(*genericStreamImpl(T))
-	if !ok {
-		panic(fmt.Sprintf("Unsupported Type: %T", stream))
-	}
-
-	mapSImpl := &mapStreamImpl(R){
-		nextReq:  make(chan struct{}),
-		nextData: make(chan R),
-	}
-
-	go func() {
-		for range mapSImpl.nextReq {
-			gsImpl.nextReq <- struct{}{}
-			t, ok := <-gsImpl.nextData
-			if !ok {
-				close(mapSImpl.nextData)
-				close(gsImpl.nextReq)
-				return
-			}
-			r := mapper(t)
-			mapSImpl.nextData <- r
-		}
-	}()
-
-	return mapSImpl
-}
-
-func (mapSImpl *mapStreamImpl(T)) Filter(predicate Predicate(T)) Stream(T) {
-	gsImpl := &genericStreamImpl(T){
-		prevReq:  mapSImpl.nextReq,
-		prevData: mapSImpl.nextData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
-	}
-
-	go gsImpl.filter(predicate)
-
-	return gsImpl
-}
-
-func (mapSImpl *mapStreamImpl(T)) ForEach(action Consumer(T)) {
-	mapSImpl.nextReq <- struct{}{}
-	for t := range mapSImpl.nextData {
-		action(t)
-		mapSImpl.nextReq <- struct{}{}
-	}
+	// Distinct returns a stream consisting of the distinct elements 
+	// (according to == of this stream.
+	Distinct() Stream(T)
 }

@@ -1,9 +1,11 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
 package gostream
 
 import (
 	"fmt"
-	"testing"
 	"strconv"
+	"testing"
 )
 
 func TestAsStream_int(t *testing.T) {
@@ -38,5 +40,19 @@ func TestMap(t *testing.T) {
 	}).ForEach(func(t string) {
 		fmt.Printf("t: %q\n", t)
 	})
+}
 
+func TestDistinct(t *testing.T) {
+	s := AsStream([]int{1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
+		6, 6, 7, 7, 8, 8, 9, 9, 10, 10})
+
+	s = s.Filter(func(t int) bool {
+		return t&1 != 0
+	})
+
+	Map(int, string)(s, func(t int) string {
+		return strconv.Itoa(t)
+	}).Distinct().ForEach(func(t string) {
+		fmt.Printf("t: %q\n", t)
+	})
 }
