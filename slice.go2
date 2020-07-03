@@ -4,29 +4,29 @@ package gostream
 
 type sliceStream(type T) struct {
 	data     []T
-	prevReq  chan struct{}
-	prevData chan T
+	nextReq  chan struct{}
+	nextData chan T
 }
 
 func newSliceStreamImpl(type T)(data []T) *sliceStream(T) {
 	ss := &sliceStream(T){
 		data:     data,
-		prevReq:  make(chan struct{}),
-		prevData: make(chan T),
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
 	}
 	go func() {
 		i := 0
-		for range ss.prevReq {
+		for range ss.nextReq {
 			if i == len(ss.data) {
-				close(ss.prevData)
+				close(ss.nextData)
 				return
 			}
 			if i < len(ss.data) {
-				ss.prevData <- ss.data[i]
+				ss.nextData <- ss.data[i]
 				i++
 			}
 		}
-		close(ss.prevData)
+		close(ss.nextData)
 	}()
 
 	return ss
@@ -34,8 +34,8 @@ func newSliceStreamImpl(type T)(data []T) *sliceStream(T) {
 
 func (ss *sliceStream(T)) Filter(predicate Predicate(T)) Stream(T) {
 	gs := &genericStream(T){
-		prevReq:  ss.prevReq,
-		prevData: ss.prevData,
+		prevReq:  ss.nextReq,
+		prevData: ss.nextData,
 		nextReq:  make(chan struct{}),
 		nextData: make(chan T),
 	}
@@ -44,24 +44,11 @@ func (ss *sliceStream(T)) Filter(predicate Predicate(T)) Stream(T) {
 	return gs
 }
 
-func (ss *sliceStream(T)) Distinct() Stream(T) {
-	gs := &genericStream(T){
-		prevReq:  ss.prevReq,
-		prevData: ss.prevData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
-	}
-	go gs.distinct()
-
-	return gs
-	
-}
-
 func (ss *sliceStream(T)) ForEach(action Consumer(T)) {
-	ss.prevReq <- struct{}{}
-	for t := range ss.prevData {
+	ss.nextReq <- struct{}{}
+	for t := range ss.nextData {
 		action(t)
-		ss.prevReq <- struct{}{}
+		ss.nextReq <- struct{}{}
 	}
 }
 

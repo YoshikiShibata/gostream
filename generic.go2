@@ -22,19 +22,6 @@ func (gs *genericStream(T)) Filter(predicate Predicate(T)) Stream(T) {
 	return newGS
 }
 
-func (gs *genericStream(T)) Distinct() Stream(T) {
-	newGS := &genericStream(T){
-		prevReq:  gs.nextReq,
-		prevData: gs.nextData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
-	}
-
-	go newGS.distinct()
-
-	return newGS
-}
-
 func (gs *genericStream(T)) filter(predicate Predicate(T)) {
 	for range gs.nextReq {
 		gs.prevReq <- struct{}{}
@@ -55,32 +42,6 @@ func (gs *genericStream(T)) filter(predicate Predicate(T)) {
 			}
 		}
 		gs.nextData <- data
-	}
-}
-
-func (gs *genericStream(T)) distinct() {
-	seen := make(map[T]bool)
-	
-	for range gs.nextReq {
-		gs.prevReq <- struct{}{}
-		data, ok := <-gs.prevData
-		if !ok {
-			close(gs.nextData)
-			close(gs.prevReq)
-			return
-		}
-
-		for seen[data] {
-			gs.prevReq <- struct{}{}
-			data, ok = <-gs.prevData
-			if !ok {
-				close(gs.nextData)
-				close(gs.prevReq)
-				return
-			}
-		}
-		gs.nextData <- data
-		seen[data] = true
 	}
 }
 

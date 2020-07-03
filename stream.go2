@@ -2,6 +2,8 @@
 
 package gostream
 
+import "fmt"
+
 type Consumer(type T) func(t T)
 type Predicate(type T) func(t T) bool
 type Function(type T, R) func(t T) R
@@ -13,8 +15,63 @@ type Stream(type T) interface {
 
 	// ForEach performs an action for each element of this stream.
 	ForEach(action Consumer(T))
+}
 
-	// Distinct returns a stream consisting of the distinct elements 
-	// (according to == of this stream.
-	Distinct() Stream(T)
+// Distinct returns a stream consisting of the distinct elements
+// (according to ==) of this stream.
+func Distinct(type T comparable)(stream Stream(T)) Stream(T) {
+	var gs *genericStream(T)
+	switch s := stream.(type) {
+	case *sliceStream(T):
+		gs = &genericStream(T){
+			prevReq:  s.nextReq,
+			prevData: s.nextData,
+			nextReq:  make(chan struct{}),
+			nextData: make(chan T),
+		}
+	case *genericStream(T):
+		gs = &genericStream(T){
+			prevReq:  s.nextReq,
+			prevData: s.nextData,
+			nextReq:  make(chan struct{}),
+			nextData: make(chan T),
+		}
+	case *mapStream(T):
+		gs = &genericStream(T){
+			prevReq:  s.nextReq,
+			prevData: s.nextData,
+			nextReq:  make(chan struct{}),
+			nextData: make(chan T),
+		}
+	default:
+		panic(fmt.Sprintf("%T is not supported yet", stream))
+	}
+
+	go func() {
+		seen := make(map[T]bool)
+
+		for range gs.nextReq {
+			gs.prevReq <- struct{}{}
+			data, ok := <-gs.prevData
+			if !ok {
+				close(gs.nextData)
+				close(gs.prevReq)
+				return
+			}
+
+			for seen[data] {
+				gs.prevReq <- struct{}{}
+				data, ok = <-gs.prevData
+				if !ok {
+					close(gs.nextData)
+					close(gs.prevReq)
+					return
+				}
+			}
+			gs.nextData <- data
+			seen[data] = true
+		}
+	}()
+
+	return gs
 }

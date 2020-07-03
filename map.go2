@@ -54,19 +54,6 @@ func (ms *mapStream(T)) Filter(predicate Predicate(T)) Stream(T) {
 	return gs
 }
 
-func (ms *mapStream(T)) Distinct() Stream(T) {
-	gs := &genericStream(T){
-		prevReq:  ms.nextReq,
-		prevData: ms.nextData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
-	}
-
-	go gs.distinct()
-
-	return gs
-}
-
 func (ms *mapStream(T)) ForEach(action Consumer(T)) {
 	ms.nextReq <- struct{}{}
 	for t := range ms.nextData {
