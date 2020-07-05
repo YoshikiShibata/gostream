@@ -91,10 +91,7 @@ func TestMap_Map(t *testing.T) {
 		stream := StreamFromSlice(tc.input)
 		result := []int{}
 
-		newStream := Map(stream, func(t int) string {
-			return strconv.Itoa(t)
-		})
-
+		newStream := Map(stream, strconv.Itoa)
 		Map(newStream, func(t string) int {
 			i, err := strconv.Atoi(t)
 			if err != nil {
@@ -128,9 +125,7 @@ func TestMap_Distinct(t *testing.T) {
 		stream := StreamFromSlice(tc.input)
 		result := []string{}
 
-		newStream := Map(stream, func(t int) string {
-			return strconv.Itoa(t)
-		})
+		newStream := Map(stream, strconv.Itoa)
 		Distinct(newStream).ForEach(func(t string) {
 			result = append(result, t)
 		})

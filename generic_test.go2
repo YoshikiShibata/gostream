@@ -88,11 +88,10 @@ func TestGeneric_Map(t *testing.T) {
 		newStream := stream.Filter(func(t int) bool { // Filter returns a genericStream
 			return t&1 == 1
 		})
-		Map(newStream, func(t int) string {
-			return strconv.Itoa(t)
-		}).ForEach(func(t string) {
-			result = append(result, t)
-		})
+		Map(newStream, strconv.Itoa).
+			ForEach(func(t string) {
+				result = append(result, t)
+			})
 
 		if !reflect.DeepEqual(result, tc.want) {
 			t.Errorf("result is %v, want %v", result, tc.want)

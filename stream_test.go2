@@ -15,11 +15,10 @@ func TestMap(t *testing.T) {
 		return t&1 != 0
 	})
 
-	Map(int, string)(s, func(t int) string {
-		return strconv.Itoa(t)
-	}).ForEach(func(t string) {
-		fmt.Printf("t: %q\n", t)
-	})
+	Map(s, strconv.Itoa).
+		ForEach(func(t string) {
+			fmt.Printf("t: %q\n", t)
+		})
 }
 
 func TestDistinct(t *testing.T) {
@@ -30,9 +29,8 @@ func TestDistinct(t *testing.T) {
 		return t&1 != 0
 	})
 
-	Map(int, string)(s, func(t int) string {
-		return strconv.Itoa(t)
-	}).ForEach(func(t string) {
-		fmt.Printf("t: %q\n", t)
-	})
+	Map(s, strconv.Itoa).
+		ForEach(func(t string) {
+			fmt.Printf("t: %q\n", t)
+		})
 }
