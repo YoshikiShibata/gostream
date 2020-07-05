@@ -7,6 +7,9 @@ import "fmt"
 type Consumer(type T) func(t T)
 type Predicate(type T) func(t T) bool
 type Function(type T, R) func(t T) R
+type Less(type T) func(t1, t2 T) bool
+type BiFunction(type T, U, R) func(t T, u U) R
+type BinaryOperator(type T) BiFunction(T, T, T)
 
 type Stream(type T) interface {
 	// Filter returns a stream consisting of the elements of this stream
@@ -15,6 +18,24 @@ type Stream(type T) interface {
 
 	// ForEach performs an action for each element of this stream.
 	ForEach(action Consumer(T))
+
+	// Sorted returns a stream consisting of the elements of this stream,
+	// according to the provided Less.
+	Sorted(less Less(T)) Stream(T)
+
+	// Peek returns a stream consisting of the elements of this stream, 
+	// additionally performing the provided action on each element as elements
+	// are consumed from the resulting steam.
+	Peek(action Consumer(T)) Stream(T)
+
+	// Limit returns a stream consisting of the elements of this stream,
+	// truncated to be no logner than maxSize in length.
+	Limit(maxSize int) Stream(T)
+
+	// Skip(n int) Stream(T)
+	// ToSlice() []T
+	// Reduce(identity T, accumulator BinaryOperator(T) T
+	// Count() int
 }
 
 // Distinct returns a stream consisting of the distinct elements
@@ -74,4 +95,10 @@ func Distinct(type T comparable)(stream Stream(T)) Stream(T) {
 	}()
 
 	return gs
+}
+
+// Sorted returns a stream consisting of the elements of stream, sorted
+// according to natural order.
+func Sorted(type T comparable)(stream Stream(T)) Stream(T) {
+	panic("Not implemented yet")
 }

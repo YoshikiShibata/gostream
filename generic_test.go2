@@ -1,0 +1,132 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+import (
+	"reflect"
+	"strconv"
+	"testing"
+)
+
+func TestGeneric_ForEach(t *testing.T) {
+	for _, tc := range [...]struct {
+		input []int
+		want  []int
+	}{
+		{
+			input: []int{},
+			want:  []int{},
+		},
+		{
+			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+			want:  []int{1, 3, 5, 7, 9},
+		},
+	} {
+		stream := StreamFromSlice(tc.input)
+		result := []int{}
+
+		stream.Filter(func(t int) bool { // Filter returns a genericStream
+			return t&1 == 1
+		}).ForEach(func(t int) {
+			result = append(result, t)
+		})
+
+		if !reflect.DeepEqual(result, tc.want) {
+			t.Errorf("result is %v, want %v", result, tc.want)
+		}
+	}
+}
+
+func TestGeneric_Filter(t *testing.T) {
+	for _, tc := range [...]struct {
+		input []int
+		want  []int
+	}{
+		{
+			input: []int{},
+			want:  []int{},
+		},
+		{
+			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+			want:  []int{1, 3, 5, 7, 9},
+		},
+	} {
+		stream := StreamFromSlice(tc.input)
+		result := []int{}
+
+		stream.Filter(func(t int) bool { // Filter returns a genericStream
+			return t&1 == 1
+		}).Filter(func(t int) bool {
+			return true
+		}).ForEach(func(t int) {
+			result = append(result, t)
+		})
+
+		if !reflect.DeepEqual(result, tc.want) {
+			t.Errorf("result is %v, want %v", result, tc.want)
+		}
+	}
+}
+
+func TestGeneric_Map(t *testing.T) {
+	for _, tc := range [...]struct {
+		input []int
+		want  []string
+	}{
+		{
+			input: []int{},
+			want:  []string{},
+		},
+		{
+			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+			want:  []string{"1", "3", "5", "7", "9"},
+		},
+	} {
+		stream := StreamFromSlice(tc.input)
+		result := []string{}
+
+		newStream := stream.Filter(func(t int) bool { // Filter returns a genericStream
+			return t&1 == 1
+		})
+		Map(newStream, func(t int) string {
+			return strconv.Itoa(t)
+		}).ForEach(func(t string) {
+			result = append(result, t)
+		})
+
+		if !reflect.DeepEqual(result, tc.want) {
+			t.Errorf("result is %v, want %v", result, tc.want)
+		}
+	}
+}
+
+func TestGeneric_Distinct(t *testing.T) {
+	for _, tc := range [...]struct {
+		input []int
+		want  []int
+	}{
+		{
+			input: []int{},
+			want:  []int{},
+		},
+		{
+			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+			want: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+		},
+	} {
+		stream := StreamFromSlice(tc.input)
+		result := []int{}
+
+		newStream := stream.Filter(func(t int) bool { // Filter returns a genericStream
+			return true
+		})
+		Distinct(newStream).ForEach(func(t int) {
+			result = append(result, t)
+		})
+
+		if !reflect.DeepEqual(result, tc.want) {
+			t.Errorf("result is %v, want %v", result, tc.want)
+		}
+	}
+}

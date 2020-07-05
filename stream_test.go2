@@ -4,40 +4,12 @@ package gostream
 
 import (
 	"fmt"
-	"reflect"
 	"strconv"
 	"testing"
 )
 
-func TestAsStream_int(t *testing.T) {
-	s := AsStream([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
-	result := []int{}
-
-	s.Filter(func(t int) bool {
-		return t&1 == 0
-	}).ForEach(func(t int) {
-		result = append(result, t)
-	})
-
-	want := []int{2, 4, 6, 8, 10}
-	if !reflect.DeepEqual(result, want) {
-		t.Errorf("result is %v, want %v", result, want)
-	}
-
-}
-
-func TestAsStream_string(t *testing.T) {
-	s := AsStream([]string{"a", "b", "ab", "c", "abc", "d", "abcd"})
-
-	s.Filter(func(t string) bool {
-		return len(t) > 1
-	}).ForEach(func(t string) {
-		fmt.Printf("t: %q\n", t)
-	})
-}
-
 func TestMap(t *testing.T) {
-	s := AsStream([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
+	s := StreamFromSlice([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 	s = s.Filter(func(t int) bool {
 		return t&1 != 0
@@ -51,7 +23,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestDistinct(t *testing.T) {
-	s := AsStream([]int{1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
+	s := StreamFromSlice([]int{1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
 		6, 6, 7, 7, 8, 8, 9, 9, 10, 10})
 
 	s = Distinct(s).Filter(func(t int) bool {

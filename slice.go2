@@ -52,6 +52,18 @@ func (ss *sliceStream(T)) ForEach(action Consumer(T)) {
 	}
 }
 
-func AsStream(type T)(slice []T) Stream(T) {
+func (ss *sliceStream(T)) Sorted(less Less(T)) Stream(T) {
+	panic("Not Implemented Yet")
+}
+
+func (ss *sliceStream(T)) Peek(action Consumer(T)) Stream(T) {
+	panic("Not Implemented Yet")
+}
+
+func (ss *sliceStream(T)) Limit(maxSize int) Stream(T) {
+	panic("Not Implemented Yet")
+}
+
+func StreamFromSlice(type T)(slice []T) Stream(T) {
 	return newSliceStreamImpl(slice)
 }

@@ -52,3 +52,15 @@ func (gs *genericStream(T)) ForEach(action Consumer(T)) {
 		gs.nextReq <- struct{}{}
 	}
 }
+
+func (gs *genericStream(T)) Sorted(less Less(T)) Stream(T) {
+	panic("Not Implemented Yet")
+}
+
+func (gs *genericStream(T)) Peek(action Consumer(T)) Stream(T) {
+	panic("Not Implemented Yet")
+}
+
+func (gs *genericStream(T)) Limit(maxSize int) Stream(T) {
+	panic("Not Implemented Yet")
+}
