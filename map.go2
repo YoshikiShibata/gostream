@@ -6,28 +6,28 @@ import (
 	"fmt"
 )
 
-type mapStream(type T) struct {
+type mapStream[type T] struct {
 	nextReq  chan struct{}
 	nextData chan T
 }
 
 // Map returns a stream consisting of the results of applying the given
 // function to the elements of the given stream.
-func Map(type T, R)(stream Stream(T), mapper Function(T, R)) Stream(R) {
-	var gs *genericStream(T)
+func Map[type T, R](stream Stream[T], mapper Function[T, R]) Stream[R] {
+	var gs *genericStream[T]
 
 	switch s := stream.(type) {
-	case *sliceStream(T):
-		gs = &genericStream(T){
+	case *sliceStream[T]:
+		gs = &genericStream[T]{
 			prevReq:  nil,
 			prevData: nil,
 			nextReq:  s.nextReq,
 			nextData: s.nextData,
 		}
-	case *genericStream(T):
+	case *genericStream[T]:
 		gs = s
-	case *mapStream(T):
-		gs = &genericStream(T){
+	case *mapStream[T]:
+		gs = &genericStream[T]{
 			prevReq:  nil,
 			prevData: nil,
 			nextReq:  s.nextReq,
@@ -37,7 +37,7 @@ func Map(type T, R)(stream Stream(T), mapper Function(T, R)) Stream(R) {
 		panic(fmt.Sprintf("Unsupported Type: %T", stream))
 	}
 
-	ms := &mapStream(R){
+	ms := &mapStream[R]{
 		nextReq:  make(chan struct{}),
 		nextData: make(chan R),
 	}
@@ -59,8 +59,8 @@ func Map(type T, R)(stream Stream(T), mapper Function(T, R)) Stream(R) {
 	return ms
 }
 
-func (ms *mapStream(T)) Filter(predicate Predicate(T)) Stream(T) {
-	gs := &genericStream(T){
+func (ms *mapStream[T]) Filter(predicate Predicate[T]) Stream[T] {
+	gs := &genericStream[T]{
 		prevReq:  ms.nextReq,
 		prevData: ms.nextData,
 		nextReq:  make(chan struct{}),
@@ -72,7 +72,7 @@ func (ms *mapStream(T)) Filter(predicate Predicate(T)) Stream(T) {
 	return gs
 }
 
-func (ms *mapStream(T)) ForEach(action Consumer(T)) {
+func (ms *mapStream[T]) ForEach(action Consumer[T]) {
 	ms.nextReq <- struct{}{}
 	for t := range ms.nextData {
 		action(t)
@@ -80,24 +80,24 @@ func (ms *mapStream(T)) ForEach(action Consumer(T)) {
 	}
 }
 
-func (ms *mapStream(T)) Sorted(less Less(T)) Stream(T) {
+func (ms *mapStream[T]) Sorted(less Less[T]) Stream[T] {
 	panic("Not Implemented Yet")
 }
 
-func (ms *mapStream(T)) Peek(action Consumer(T)) Stream(T) {
+func (ms *mapStream[T]) Peek(action Consumer[T]) Stream[T] {
 	panic("Not Implemented Yet")
 }
 
-func (ms *mapStream(T)) Limit(maxSize int) Stream(T) {
+func (ms *mapStream[T]) Limit(maxSize int) Stream[T] {
 	panic("Not Implemented Yet")
 }
 
 // FlatMap returns a stream consisting of the results of replacing each
 // element of stream with the contents of mapped stream produced by applying
 // the provided mapping function to each element.
-func FlatMap(type T, R)(
-	stream Stream(T),
-	mapper Function(T, Stream(R)),
-) Stream(R) {
+func FlatMap[type T, R](
+	stream Stream[T],
+	mapper Function[T, Stream[R]],
+) Stream[R] {
 	panic("not implemented yet")
 }

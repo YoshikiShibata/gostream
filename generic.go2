@@ -2,15 +2,15 @@
 
 package gostream
 
-type genericStream(type T) struct {
+type genericStream[type T] struct {
 	prevReq  chan struct{}
 	prevData chan T
 	nextReq  chan struct{}
 	nextData chan T
 }
 
-func (gs *genericStream(T)) Filter(predicate Predicate(T)) Stream(T) {
-	newGS := &genericStream(T){
+func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
+	newGS := &genericStream[T]{
 		prevReq:  gs.nextReq,
 		prevData: gs.nextData,
 		nextReq:  make(chan struct{}),
@@ -22,7 +22,7 @@ func (gs *genericStream(T)) Filter(predicate Predicate(T)) Stream(T) {
 	return newGS
 }
 
-func (gs *genericStream(T)) filter(predicate Predicate(T)) {
+func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 	for range gs.nextReq {
 		gs.prevReq <- struct{}{}
 		data, ok := <-gs.prevData
@@ -45,7 +45,7 @@ func (gs *genericStream(T)) filter(predicate Predicate(T)) {
 	}
 }
 
-func (gs *genericStream(T)) ForEach(action Consumer(T)) {
+func (gs *genericStream[T]) ForEach(action Consumer[T]) {
 	gs.nextReq <- struct{}{}
 	for t := range gs.nextData {
 		action(t)
@@ -53,14 +53,14 @@ func (gs *genericStream(T)) ForEach(action Consumer(T)) {
 	}
 }
 
-func (gs *genericStream(T)) Sorted(less Less(T)) Stream(T) {
+func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 	panic("Not Implemented Yet")
 }
 
-func (gs *genericStream(T)) Peek(action Consumer(T)) Stream(T) {
+func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
 	panic("Not Implemented Yet")
 }
 
-func (gs *genericStream(T)) Limit(maxSize int) Stream(T) {
+func (gs *genericStream[T]) Limit(maxSize int) Stream[T] {
 	panic("Not Implemented Yet")
 }
