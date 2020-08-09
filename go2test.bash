@@ -16,3 +16,5 @@ do
 done
 
 go tool go2go test
+
+rm *.go

@@ -2,7 +2,11 @@
 
 package gostream
 
-import "fmt"
+import (
+	"constraints"
+	"fmt"
+	"sort"
+)
 
 type Consumer[type T] func(t T)
 type Predicate[type T] func(t T) bool
@@ -23,7 +27,7 @@ type Stream[type T] interface {
 	// according to the provided Less.
 	Sorted(less Less[T]) Stream[T]
 
-	// Peek returns a stream consisting of the elements of this stream, 
+	// Peek returns a stream consisting of the elements of this stream,
 	// additionally performing the provided action on each element as elements
 	// are consumed from the resulting steam.
 	Peek(action Consumer[T]) Stream[T]
@@ -99,6 +103,38 @@ func Distinct[type T comparable](stream Stream[T]) Stream[T] {
 
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
-func Sorted[type T comparable](stream Stream[T]) Stream[T] {
-	panic("Not implemented yet")
+func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
+	var prevReq chan struct{}
+	var prevData chan T
+
+	switch s := stream.(type) {
+	case *sliceStream[T]:
+		prevReq = s.nextReq
+		prevData = s.nextData
+	case *genericStream[T]:
+		prevReq = s.nextReq
+		prevData = s.nextData
+	case *mapStream[T]:
+		prevReq = s.nextReq
+		prevData = s.nextData
+	default:
+		panic(fmt.Sprintf("%T is not supported yet", stream))
+	}
+
+	var dataSlice []T
+	for {
+		prevReq <- struct{}{}
+		data, ok := <-prevData
+		if !ok {
+			break
+		}
+		dataSlice = append(dataSlice, data)
+	}
+	sort.Slice(dataSlice, func(i, j int) bool {
+		return dataSlice[i] < dataSlice[j]
+	})
+
+	return newSliceStreamImpl(dataSlice)
+	// Somehow following line cannot be compiled.
+	// retun StreamFromSlice(dataSlice)
 }
