@@ -6,19 +6,32 @@ import (
 	"sort"
 )
 
+type prevStream[type T] struct {
+	req  chan struct{}
+	data chan T
+}
+
+func (ps prevStream[T]) prevData() (T, bool) {
+	ps.req <- struct{}{}
+	d, ok := <-ps.data
+	return d, ok
+}
+
+func (ps prevStream[T]) closePrev() {
+	close(ps.req)
+}
+
 type genericStream[type T] struct {
-	prevReq  chan struct{}
-	prevData chan T
+	prevStream[T]
 	nextReq  chan struct{}
 	nextData chan T
 }
 
 func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 	newGS := &genericStream[T]{
-		prevReq:  gs.nextReq,
-		prevData: gs.nextData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		prevStream: prevStream[T]{req: gs.nextReq, data: gs.nextData},
+		nextReq:    make(chan struct{}),
+		nextData:   make(chan T),
 	}
 
 	go newGS.filter(predicate)
@@ -28,20 +41,19 @@ func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 
 func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 	for range gs.nextReq {
-		gs.prevReq <- struct{}{}
-		data, ok := <-gs.prevData
+		data, ok := <-gs.prevStream.prevData()
 		if !ok {
 			close(gs.nextData)
-			close(gs.prevReq)
+			gs.closePrev()
 			return
 		}
 
 		for !predicate(data) {
 			gs.prevReq <- struct{}{}
-			data, ok = <-gs.prevData
+			data, ok = <-gs.prevData()
 			if !ok {
 				close(gs.nextData)
-				close(gs.prevReq)
+				gs.closePrev()
 				return
 			}
 		}
@@ -60,9 +72,9 @@ func (gs *genericStream[T]) ForEach(action Consumer[T]) {
 func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 	var dataSlice []T
 	for {
-		gs.prevReq <- struct{}{}
-		data, ok := <-gs.prevData
+		data, ok := <-gs.prevData()
 		if !ok {
+			gs.closePrev()
 			break
 		}
 		dataSlice = append(dataSlice, data)
