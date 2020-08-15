@@ -1,0 +1,13 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+// FlatMap returns a stream consisting of the results of replacing each
+// element of stream with the contents of mapped stream produced by applying
+// the provided mapping function to each element.
+func FlatMap[type T, R](
+	stream Stream[T],
+	mapper Function[T, Stream[R]],
+) Stream[R] {
+	panic("not implemented yet")
+}

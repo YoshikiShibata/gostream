@@ -2,12 +2,6 @@
 
 package gostream
 
-import (
-	"constraints"
-	"fmt"
-	"sort"
-)
-
 type Consumer[type T] func(t T)
 type Predicate[type T] func(t T) bool
 type Function[type T, R] func(t T) R
@@ -40,101 +34,4 @@ type Stream[type T] interface {
 	// ToSlice() []T
 	// Reduce(identity T, accumulator BinaryOperator[T] T
 	// Count() int
-}
-
-// Distinct returns a stream consisting of the distinct elements
-// (according to ==) of this stream.
-func Distinct[type T comparable](stream Stream[T]) Stream[T] {
-	var gs *genericStream[T]
-	switch s := stream.(type) {
-	case *sliceStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  s.nextReq,
-			prevData: s.nextData,
-			nextReq:  make(chan struct{}),
-			nextData: make(chan T),
-		}
-	case *genericStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  s.nextReq,
-			prevData: s.nextData,
-			nextReq:  make(chan struct{}),
-			nextData: make(chan T),
-		}
-	case *mapStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  s.nextReq,
-			prevData: s.nextData,
-			nextReq:  make(chan struct{}),
-			nextData: make(chan T),
-		}
-	default:
-		panic(fmt.Sprintf("%T is not supported yet", stream))
-	}
-
-	go func() {
-		seen := make(map[T]bool)
-
-		for range gs.nextReq {
-			gs.prevReq <- struct{}{}
-			data, ok := <-gs.prevData
-			if !ok {
-				close(gs.nextData)
-				close(gs.prevReq)
-				return
-			}
-
-			for seen[data] {
-				gs.prevReq <- struct{}{}
-				data, ok = <-gs.prevData
-				if !ok {
-					close(gs.nextData)
-					close(gs.prevReq)
-					return
-				}
-			}
-			gs.nextData <- data
-			seen[data] = true
-		}
-	}()
-
-	return gs
-}
-
-// Sorted returns a stream consisting of the elements of stream, sorted
-// according to natural order.
-func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
-	var prevReq chan struct{}
-	var prevData chan T
-
-	switch s := stream.(type) {
-	case *sliceStream[T]:
-		prevReq = s.nextReq
-		prevData = s.nextData
-	case *genericStream[T]:
-		prevReq = s.nextReq
-		prevData = s.nextData
-	case *mapStream[T]:
-		prevReq = s.nextReq
-		prevData = s.nextData
-	default:
-		panic(fmt.Sprintf("%T is not supported yet", stream))
-	}
-
-	var dataSlice []T
-	for {
-		prevReq <- struct{}{}
-		data, ok := <-prevData
-		if !ok {
-			break
-		}
-		dataSlice = append(dataSlice, data)
-	}
-	sort.Slice(dataSlice, func(i, j int) bool {
-		return dataSlice[i] < dataSlice[j]
-	})
-
-	return newSliceStreamImpl(dataSlice)
-	// Somehow following line cannot be compiled.
-	// retun StreamFromSlice(dataSlice)
 }

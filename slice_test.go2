@@ -110,3 +110,17 @@ func TestAsStream_Distinct(t *testing.T) {
 		}
 	}
 }
+
+func TestSlice_Sorted(t *testing.T) {
+	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+
+	sorted := []int{}
+	s.Sorted(func(t1, t2 int) bool {
+		return t1 < t2
+	}).ForEach(func(t int) {
+		sorted = append(sorted, t)
+	})
+	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
+		t.Errorf("sorted is not sorted: %v", sorted)
+	}
+}

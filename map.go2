@@ -81,7 +81,12 @@ func (ms *mapStream[T]) ForEach(action Consumer[T]) {
 }
 
 func (ms *mapStream[T]) Sorted(less Less[T]) Stream[T] {
-	panic("Not Implemented Yet")
+	gs := &genericStream[T]{
+		prevReq:  ms.nextReq,
+		prevData: ms.nextData,
+	}
+
+	return gs.Sorted(less)
 }
 
 func (ms *mapStream[T]) Peek(action Consumer[T]) Stream[T] {
@@ -90,14 +95,4 @@ func (ms *mapStream[T]) Peek(action Consumer[T]) Stream[T] {
 
 func (ms *mapStream[T]) Limit(maxSize int) Stream[T] {
 	panic("Not Implemented Yet")
-}
-
-// FlatMap returns a stream consisting of the results of replacing each
-// element of stream with the contents of mapped stream produced by applying
-// the provided mapping function to each element.
-func FlatMap[type T, R](
-	stream Stream[T],
-	mapper Function[T, Stream[R]],
-) Stream[R] {
-	panic("not implemented yet")
 }

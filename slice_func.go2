@@ -1,0 +1,8 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+func StreamFromSlice[type T](slice []T) Stream[T] {
+	return newSliceStreamImpl(slice)
+}
+
