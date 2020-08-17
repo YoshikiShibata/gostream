@@ -41,7 +41,7 @@ func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 
 func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 	for range gs.nextReq {
-		data, ok := <-gs.prevStream.prevData()
+		data, ok := gs.prevStream.prevData()
 		if !ok {
 			close(gs.nextData)
 			gs.closePrev()
@@ -49,8 +49,7 @@ func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 		}
 
 		for !predicate(data) {
-			gs.prevReq <- struct{}{}
-			data, ok = <-gs.prevData()
+			data, ok = gs.prevData()
 			if !ok {
 				close(gs.nextData)
 				gs.closePrev()
