@@ -2,7 +2,7 @@
 
 source ~/bin/switch_go2.bash
 
-for go2 in generic.go2 map.go2 slice.go2 \
+for go2 in generic.go2 map.go2 slice.go2 trace.go2 \
 		generic_test.go2 \
 		map_test.go2 \
 		slice_test.go2 \
@@ -15,6 +15,6 @@ do
 	fi
 done
 
-go tool go2go test
+go tool go2go test 
 
 rm *.go

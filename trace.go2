@@ -1,0 +1,14 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+import (
+	"testing"
+)
+
+func trace(t *testing.T, name string) func() {
+	t.Logf("%s entered", name)
+	return func() {
+		t.Logf("%s returned", name)
+	}
+}
