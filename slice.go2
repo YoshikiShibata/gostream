@@ -2,7 +2,7 @@
 
 package gostream
 
-type sliceStream[type T] struct {
+type sliceStream[type T any] struct {
 	data     []T
 	nextReq  chan struct{}
 	nextData chan T

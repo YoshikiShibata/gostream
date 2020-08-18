@@ -6,14 +6,14 @@ import (
 	"fmt"
 )
 
-type mapStream[type T] struct {
+type mapStream[type T any] struct {
 	nextReq  chan struct{}
 	nextData chan T
 }
 
 // Map returns a stream consisting of the results of applying the given
 // function to the elements of the given stream.
-func Map[type T, R](stream Stream[T], mapper Function[T, R]) Stream[R] {
+func Map[type T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 	var gs *genericStream[T]
 
 	switch s := stream.(type) {

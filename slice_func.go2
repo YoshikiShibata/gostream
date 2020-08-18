@@ -2,7 +2,7 @@
 
 package gostream
 
-func StreamFromSlice[type T](slice []T) Stream[T] {
+func StreamFromSlice[T any](slice []T) Stream[T] {
 	return newSliceStreamImpl(slice)
 }
 

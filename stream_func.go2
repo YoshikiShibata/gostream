@@ -10,7 +10,7 @@ import (
 
 // Distinct returns a stream consisting of the distinct elements
 // (according to ==) of this stream.
-func Distinct[type T comparable](stream Stream[T]) Stream[T] {
+func Distinct[T comparable](stream Stream[T]) Stream[T] {
 	var gs *genericStream[T]
 	switch s := stream.(type) {
 	case *sliceStream[T]:
@@ -69,7 +69,7 @@ func Distinct[type T comparable](stream Stream[T]) Stream[T] {
 
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
-func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
+func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
 	var prevReq chan struct{}
 	var prevData chan T
 
@@ -100,7 +100,5 @@ func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
 		return dataSlice[i] < dataSlice[j]
 	})
 
-	return newSliceStreamImpl(dataSlice)
-	// Somehow following line cannot be compiled.
-	// retun StreamFromSlice(dataSlice)
+	return StreamFromSlice(dataSlice)
 }
