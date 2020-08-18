@@ -9,7 +9,9 @@ import (
 	"testing"
 )
 
-func TestMap(t *testing.T) {
+func TestStream_Map(t *testing.T) {
+	defer trace("TestStream_Map")()
+
 	s := StreamFromSlice([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
 	s = s.Filter(func(t int) bool {
@@ -22,7 +24,9 @@ func TestMap(t *testing.T) {
 		})
 }
 
-func TestDistinct(t *testing.T) {
+func TestStream_Distinct(t *testing.T) {
+	defer trace("TestStream_Distinct")()
+
 	s := StreamFromSlice([]int{1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
 		6, 6, 7, 7, 8, 8, 9, 9, 10, 10})
 
@@ -36,7 +40,9 @@ func TestDistinct(t *testing.T) {
 		})
 }
 
-func TestSortedFunc(t *testing.T) {
+func TestStream_SortedFunc(t *testing.T) {
+	defer trace("TestStream_SortedFunc")()
+
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 
 	s = Sorted(s)

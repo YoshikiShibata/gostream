@@ -10,6 +10,8 @@ import (
 )
 
 func TestMap_ForEach(t *testing.T) {
+	defer trace("TestMap_ForEach")()
+
 	for _, tc := range [...]struct {
 		input []string
 		want  []int
@@ -43,6 +45,8 @@ func TestMap_ForEach(t *testing.T) {
 }
 
 func TestMap_Filter(t *testing.T) {
+	defer trace("TestMap_Filter")()
+
 	for _, tc := range [...]struct {
 		input []string
 		want  []int
@@ -78,6 +82,8 @@ func TestMap_Filter(t *testing.T) {
 }
 
 func TestMap_Map(t *testing.T) {
+	defer trace("TestMap_Map")()
+
 	for _, tc := range [...]struct {
 		input []int
 	}{
@@ -108,6 +114,8 @@ func TestMap_Map(t *testing.T) {
 }
 
 func TestMap_Distinct(t *testing.T) {
+	defer trace("TestMap_Distinct")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []string
@@ -136,6 +144,8 @@ func TestMap_Distinct(t *testing.T) {
 }
 
 func TestMap_Sorted(t *testing.T) {
+	defer trace("TestMap_Sorted")()
+
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 
 	sorted := []int{}

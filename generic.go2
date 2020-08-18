@@ -78,16 +78,6 @@ func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 		dataSlice = append(dataSlice, t)
 		gs.nextReq <- struct{}{}
 	}
-	/*
-		for {
-			gs.prevReq <- struct{}{}
-			data, ok := <-gs.prevData
-			if !ok {
-				break
-			}
-			dataSlice = append(dataSlice, data)
-		}
-	*/
 	sort.Slice(dataSlice, func(i, j int) bool {
 		return less(dataSlice[i], dataSlice[j])
 	})

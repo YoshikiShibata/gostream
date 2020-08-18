@@ -9,6 +9,8 @@ import (
 )
 
 func TestSlice(t *testing.T) {
+	defer trace("TestSlice")()
+
 	for _, tc := range [...]struct {
 		input []int
 	}{
@@ -28,6 +30,8 @@ func TestSlice(t *testing.T) {
 }
 
 func TestSlice_Filter(t *testing.T) {
+	defer trace("TestSlice_Filter")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []int
@@ -57,6 +61,8 @@ func TestSlice_Filter(t *testing.T) {
 }
 
 func TestSlice_Map(t *testing.T) {
+	defer trace("TestSlice_Map")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []string
@@ -85,6 +91,8 @@ func TestSlice_Map(t *testing.T) {
 }
 
 func TestAsStream_Distinct(t *testing.T) {
+	defer trace("TestSlice_Distinct")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []int
@@ -112,6 +120,8 @@ func TestAsStream_Distinct(t *testing.T) {
 }
 
 func TestSlice_Sorted(t *testing.T) {
+	defer trace("TestSlice_Sorted")()
+
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 
 	sorted := []int{}

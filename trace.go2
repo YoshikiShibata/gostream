@@ -3,12 +3,12 @@
 package gostream
 
 import (
-	"testing"
+	"fmt"
 )
 
-func trace(t *testing.T, name string) func() {
-	t.Logf("%s entered", name)
+func trace(name string) func() {
+	fmt.Printf("=== RUN %s\n", name)
 	return func() {
-		t.Logf("%s returned", name)
+		fmt.Printf("=== END %s\n", name)
 	}
 }

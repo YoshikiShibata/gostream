@@ -54,8 +54,8 @@ func (ss *sliceStream[T]) ForEach(action Consumer[T]) {
 
 func (ss *sliceStream[T]) Sorted(less Less[T]) Stream[T] {
 	gs := &genericStream[T]{
-		prevReq:  ss.nextReq,
-		prevData: ss.nextData,
+		nextReq:  ss.nextReq,
+		nextData: ss.nextData,
 	}
 
 	return gs.Sorted(less)

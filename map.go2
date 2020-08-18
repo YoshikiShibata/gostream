@@ -82,8 +82,8 @@ func (ms *mapStream[T]) ForEach(action Consumer[T]) {
 
 func (ms *mapStream[T]) Sorted(less Less[T]) Stream[T] {
 	gs := &genericStream[T]{
-		prevReq:  ms.nextReq,
-		prevData: ms.nextData,
+		nextReq:  ms.nextReq,
+		nextData: ms.nextData,
 	}
 
 	return gs.Sorted(less)

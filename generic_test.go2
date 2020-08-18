@@ -3,14 +3,14 @@
 package gostream
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
 )
 
 func TestGeneric_ForEach(t *testing.T) {
-	trace(t, "TestGeneric_ForEach")
+	defer trace("TestGeneric_ForEach")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []int
@@ -40,6 +40,8 @@ func TestGeneric_ForEach(t *testing.T) {
 }
 
 func TestGeneric_Filter(t *testing.T) {
+	defer trace("TestGeneric_Filter")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []int
@@ -71,6 +73,8 @@ func TestGeneric_Filter(t *testing.T) {
 }
 
 func TestGeneric_Map(t *testing.T) {
+	defer trace("TestGeneric_Map")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []string
@@ -102,6 +106,8 @@ func TestGeneric_Map(t *testing.T) {
 }
 
 func TestGeneric_Distinct(t *testing.T) {
+	defer trace("TestGeneric_Distinct")()
+
 	for _, tc := range [...]struct {
 		input []int
 		want  []int
@@ -133,7 +139,8 @@ func TestGeneric_Distinct(t *testing.T) {
 }
 
 func TestGeneric_Sorted(t *testing.T) {
-	fmt.Println("TestGeneric_Sorted START")
+	defer trace("TestGeneric_Sorted")()
+
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 	s = s.Filter(func(t int) bool { // Filter returns a genericStream
 		return true
@@ -148,10 +155,11 @@ func TestGeneric_Sorted(t *testing.T) {
 	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
 		t.Errorf("sorted is not sorted: %v", sorted)
 	}
-	fmt.Println("TestGeneric_Sorted END")
 }
 
 func TestGeneric_Limit(t *testing.T) {
+	defer trace("TestGeneric_Limit")()
+
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 	s = s.Filter(func(t int) bool { // Filter returns a genericStream
 		return true
