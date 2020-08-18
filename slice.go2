@@ -66,5 +66,14 @@ func (ss *sliceStream[T]) Peek(action Consumer[T]) Stream[T] {
 }
 
 func (ss *sliceStream[T]) Limit(maxSize int) Stream[T] {
-	panic("Not Implemented Yet")
+	newGS := &genericStream[T]{
+		prevReq:  ss.nextReq,
+		prevData: ss.nextData,
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+
+	go newGS.limit(maxSize)
+
+	return newGS
 }

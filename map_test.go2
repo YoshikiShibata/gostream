@@ -160,3 +160,22 @@ func TestMap_Sorted(t *testing.T) {
 		t.Errorf("sorted is not sorted: %v", sorted)
 	}
 }
+
+func TestMap_Limit(t *testing.T) {
+	defer trace("TestMap_Limit")()
+
+	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+
+	sorted := []int{}
+	Map(s, func(t int) int {
+		return t
+	}).Limit(5).Sorted(func(t1, t2 int) bool {
+		return t1 < t2
+	}).ForEach(func(t int) {
+		sorted = append(sorted, t)
+	})
+	want := []int{6, 7, 8, 9, 10}
+	if !reflect.DeepEqual(sorted, want) {
+		t.Errorf("sorted is %v, want %v", sorted, want)
+	}
+}
