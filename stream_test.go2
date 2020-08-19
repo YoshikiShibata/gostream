@@ -3,7 +3,6 @@
 package gostream
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -18,10 +17,16 @@ func TestStream_Map(t *testing.T) {
 		return t&1 != 0
 	})
 
+	var results []string
 	Map(s, strconv.Itoa).
 		ForEach(func(t string) {
-			fmt.Printf("t: %q\n", t)
+			results = append(results, t)
 		})
+
+	want := []string{"1", "3", "5", "7", "9"}
+	if !reflect.DeepEqual(results, want) {
+		t.Errorf("results is %v, want %v", results, want)
+	}
 }
 
 func TestStream_Distinct(t *testing.T) {
@@ -34,10 +39,15 @@ func TestStream_Distinct(t *testing.T) {
 		return t&1 != 0
 	})
 
+	var results []string
 	Map(s, strconv.Itoa).
 		ForEach(func(t string) {
-			fmt.Printf("t: %q\n", t)
+			results = append(results, t)
 		})
+	want := []string{"1", "3", "5", "7", "9"}
+	if !reflect.DeepEqual(results, want) {
+		t.Errorf("results is %v, want %v", results, want)
+	}
 }
 
 func TestStream_SortedFunc(t *testing.T) {

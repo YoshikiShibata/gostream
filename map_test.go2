@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 )
 
@@ -159,6 +160,39 @@ func TestMap_Sorted(t *testing.T) {
 	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
 		t.Errorf("sorted is not sorted: %v", sorted)
 	}
+}
+
+func TestMap_Peek(t *testing.T) {
+	defer trace("TestMap_Peek")()
+
+	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+
+	var lock sync.Mutex
+	var peeked []int
+	peekFunc := func(t int) {
+		lock.Lock()
+		peeked = append(peeked, t)
+		lock.Unlock()
+	}
+
+	sorted := []int{}
+	Map(s, func(t int) int {
+		return t
+	}).Peek(peekFunc).Sorted(func(t1, t2 int) bool {
+		return t1 < t2
+	}).ForEach(func(t int) {
+		sorted = append(sorted, t)
+	})
+	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
+		t.Errorf("sorted is not sorted: %v", sorted)
+	}
+
+	lock.Lock()
+	wantPeeked := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	if !reflect.DeepEqual(peeked, wantPeeked) {
+		t.Errorf("peeked is %v, want %v", peeked, wantPeeked)
+	}
+	lock.Unlock()
 }
 
 func TestMap_Limit(t *testing.T) {

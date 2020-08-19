@@ -5,6 +5,7 @@ package gostream
 import (
 	"reflect"
 	"strconv"
+	"sync"
 	"testing"
 )
 
@@ -125,7 +126,8 @@ func TestGeneric_Distinct(t *testing.T) {
 		stream := StreamFromSlice(tc.input)
 		result := []int{}
 
-		newStream := stream.Filter(func(t int) bool { // Filter returns a genericStream
+		// Filter returns a genericStream
+		newStream := stream.Filter(func(t int) bool {
 			return true
 		})
 		Distinct(newStream).ForEach(func(t int) {
@@ -155,6 +157,40 @@ func TestGeneric_Sorted(t *testing.T) {
 	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
 		t.Errorf("sorted is not sorted: %v", sorted)
 	}
+}
+
+func TestGeneric_Peek(t *testing.T) {
+	defer trace("TestGeneric_Peek")()
+
+	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	s = s.Filter(func(t int) bool { // Filter returns a genericStream
+		return true
+	})
+
+	var lock sync.Mutex
+	var peeked []int
+	peekFunc := func(t int) {
+		lock.Lock()
+		peeked = append(peeked, t)
+		lock.Unlock()
+	}
+
+	sorted := []int{}
+	s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
+		return t1 < t2
+	}).ForEach(func(t int) {
+		sorted = append(sorted, t)
+	})
+	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
+		t.Errorf("sorted is not sorted: %v", sorted)
+	}
+
+	lock.Lock()
+	wantPeeked := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	if !reflect.DeepEqual(peeked, wantPeeked) {
+		t.Errorf("peeked is %v, want %v", peeked, wantPeeked)
+	}
+	lock.Unlock()
 }
 
 func TestGeneric_Limit(t *testing.T) {

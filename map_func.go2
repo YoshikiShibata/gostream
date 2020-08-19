@@ -2,6 +2,62 @@
 
 package gostream
 
+import (
+	"fmt"
+)
+
+// Map returns a stream consisting of the results of applying the given
+// function to the elements of the given stream.
+func Map[type T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
+	var gs *genericStream[T]
+
+	switch s := stream.(type) {
+	case *sliceStream[T]:
+		gs = &genericStream[T]{
+			prevReq:  nil,
+			prevData: nil,
+			nextReq:  s.nextReq,
+			nextData: s.nextData,
+		}
+	case *genericStream[T]:
+		gs = s
+	case *mapStream[T]:
+		gs = &genericStream[T]{
+			prevReq:  nil,
+			prevData: nil,
+			nextReq:  s.nextReq,
+			nextData: s.nextData,
+		}
+	default:
+		panic(fmt.Sprintf("Unsupported Type: %T", stream))
+	}
+
+	ms := &mapStream[R]{
+		nextReq:  make(chan struct{}),
+		nextData: make(chan R),
+	}
+
+	go func() {
+		for range ms.nextReq {
+			gs.nextReq <- struct{}{}
+			t, ok := <-gs.nextData
+			if !ok {
+				close(ms.nextData)
+				close(gs.nextReq)
+				go func() {
+					for range ms.nextReq {
+					}
+				}()
+				return
+			}
+			r := mapper(t)
+			ms.nextData <- r
+		}
+	}()
+
+	return ms
+}
+
 // FlatMap returns a stream consisting of the results of replacing each
 // element of stream with the contents of mapped stream produced by applying
 // the provided mapping function to each element.
