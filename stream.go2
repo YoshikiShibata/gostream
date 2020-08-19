@@ -14,8 +14,21 @@ type Stream[T any] interface {
 	// that mathe the give predicate.
 	Filter(predicate Predicate[T]) Stream[T]
 
-	// ForEach performs an action for each element of this stream.
-	ForEach(action Consumer[T])
+	// map: not supported because "generic method" is not supported:
+	//      use Map function instead
+
+	// mapToInt, mapToLong, mapToDouble: no support
+
+	// flatMap: no supported because "generic method" is not supported:
+	// TODO: Support FlatMap function
+
+	// flatMapToInt, flatMapToLong, flatMapToDouble: no support
+
+	// distinct: not supported because T is any:
+ 	// use Distinct function instead
+
+	// sorted(): no supported because no overload is supported:
+	// use Sorted() function
 
 	// Sorted returns a stream consisting of the elements of this stream,
 	// according to the provided Less.
@@ -30,7 +43,15 @@ type Stream[T any] interface {
 	// truncated to be no logner than maxSize in length.
 	Limit(maxSize int) Stream[T]
 
-	// Skip(n int) Stream[T]
+	// ForEach performs an action for each element of this stream.
+	ForEach(action Consumer[T])
+
+	// Skip returns a stream consisting of the remaining elements of this
+	// stream after discarding the first n elements of the stream.
+	// If this stream contians fewer than n elements then an empty stream
+	// will be returned.
+	Skip(n int) Stream[T]
+
 	// ToSlice() []T
 	// Reduce(identity T, accumulator BinaryOperator[T] T
 	// Count() int

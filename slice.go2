@@ -82,3 +82,7 @@ func (ss *sliceStream[T]) Limit(maxSize int) Stream[T] {
 	go gs.limit(maxSize)
 	return gs
 }
+
+func (ss *sliceStream[T]) Skip(n int) Stream[T] {
+	panic("not implemented yet")
+}

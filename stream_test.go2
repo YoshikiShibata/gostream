@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-func TestStream_Map(t *testing.T) {
-	defer trace("TestStream_Map")()
+func TestStream_MapFunc(t *testing.T) {
+	defer trace("TestStream_MapFunc")()
 
 	s := StreamFromSlice([]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10})
 
@@ -29,8 +29,8 @@ func TestStream_Map(t *testing.T) {
 	}
 }
 
-func TestStream_Distinct(t *testing.T) {
-	defer trace("TestStream_Distinct")()
+func TestStream_DistinctFunc(t *testing.T) {
+	defer trace("TestStream_DistinctFunc")()
 
 	s := StreamFromSlice([]int{1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
 		6, 6, 7, 7, 8, 8, 9, 9, 10, 10})

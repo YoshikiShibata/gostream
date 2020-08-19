@@ -143,3 +143,7 @@ func (gs *genericStream[T]) limit(maxSize int) {
 	}
 	gs.close()
 }
+
+func (gs *genericStream[T]) Skip(n int) Stream[T] {
+	panic("not implemented yet")
+}
