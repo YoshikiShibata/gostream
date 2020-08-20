@@ -89,3 +89,7 @@ func (ss *sliceStream[T]) Skip(n int) Stream[T] {
 	go gs.skip(n)
 	return gs
 }
+
+func (ss *sliceStream[T]) ToSlice() []T {
+	panic("Not Implemented Yet")
+}

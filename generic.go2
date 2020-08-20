@@ -175,3 +175,7 @@ func (gs *genericStream[T]) skip(n int) {
 
 	gs.close()
 }
+
+func (gs *genericStream[T]) ToSlice() []T {
+	panic("Not Implemented Yet")
+}
