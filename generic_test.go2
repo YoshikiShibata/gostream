@@ -214,3 +214,51 @@ func TestGeneric_Limit(t *testing.T) {
 		t.Errorf("sorted is %v, want %v", sorted, want)
 	}
 }
+
+func TestGeneric_Skip(t *testing.T) {
+	defer trace("TestGeneric_Skip")()
+
+	t.Run("0", func(t *testing.T) {
+		defer trace("TestGeneric_Skip/0")()
+
+		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+		s = s.Filter(func(t int) bool { // Filter returns a genericStream
+			return true
+		})
+
+		sorted := []int{}
+		s.Skip(0).Limit(5).
+			Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).
+			ForEach(func(t int) {
+				sorted = append(sorted, t)
+			})
+		want := []int{6, 7, 8, 9, 10}
+		if !reflect.DeepEqual(sorted, want) {
+			t.Errorf("sorted is %v, want %v", sorted, want)
+		}
+	})
+
+	t.Run("5", func(t *testing.T) {
+		defer trace("TestGeneric_Skip/5")()
+
+		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+		s = s.Filter(func(t int) bool { // Filter returns a genericStream
+			return true
+		})
+
+		sorted := []int{}
+		s.Skip(5).Limit(5).
+			Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).
+			ForEach(func(t int) {
+				sorted = append(sorted, t)
+			})
+		want := []int{1, 2, 3, 4, 5}
+		if !reflect.DeepEqual(sorted, want) {
+			t.Errorf("sorted is %v, want %v", sorted, want)
+		}
+	})
+}

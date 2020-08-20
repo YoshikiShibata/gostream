@@ -36,6 +36,12 @@ func (gs *genericStream[T]) close() {
 	gs.discard(gs.nextReq)
 }
 
+func (gs *genericStream[T]) getPrevData() (T, bool) {
+	gs.prevReq <- struct{}{}
+	data, ok := <-gs.prevData
+	return data, ok
+}
+
 func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 	newGS := newGenericStream(gs)
 
@@ -45,16 +51,14 @@ func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 
 func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 	for range gs.nextReq {
-		gs.prevReq <- struct{}{}
-		data, ok := <-gs.prevData
+		data, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
 			return
 		}
 
 		for !predicate(data) {
-			gs.prevReq <- struct{}{}
-			data, ok = <-gs.prevData
+			data, ok = gs.getPrevData()
 			if !ok {
 				gs.close()
 				return
@@ -98,8 +102,7 @@ func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
 
 func (gs *genericStream[T]) peek(action Consumer[T]) {
 	for range gs.nextReq {
-		gs.prevReq <- struct{}{}
-		data, ok := <-gs.prevData
+		data, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
 			return
@@ -128,8 +131,7 @@ func (gs *genericStream[T]) limit(maxSize int) {
 
 	count := maxSize
 	for range gs.nextReq {
-		gs.prevReq <- struct{}{}
-		data, ok := <-gs.prevData
+		data, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
 			return
@@ -145,5 +147,31 @@ func (gs *genericStream[T]) limit(maxSize int) {
 }
 
 func (gs *genericStream[T]) Skip(n int) Stream[T] {
-	panic("not implemented yet")
+	newGS := newGenericStream(gs)
+
+	go newGS.skip(n)
+	return newGS
+}
+
+func (gs *genericStream[T]) skip(n int) {
+	for range gs.nextReq {
+		// Skip n elements
+		for n > 0 {
+			_, ok := gs.getPrevData()
+			if !ok {
+				gs.close()
+				return
+			}
+			n--
+		}
+
+		data, ok := gs.getPrevData()
+		if !ok {
+			gs.close()
+			return
+		}
+		gs.nextData <- data
+	}
+
+	gs.close()
 }

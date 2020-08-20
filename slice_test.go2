@@ -166,8 +166,9 @@ func TestSlice_Peek(t *testing.T) {
 	}
 	lock.Unlock()
 }
+
 func TestSlice_Limit(t *testing.T) {
-	defer trace("TestSlice_Sorted")()
+	defer trace("TestSlice_Limit")()
 
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
 
@@ -181,4 +182,42 @@ func TestSlice_Limit(t *testing.T) {
 	if !reflect.DeepEqual(sorted, want) {
 		t.Errorf("sorted is %v, want %v", sorted, want)
 	}
+}
+
+func TestSlice_Skip(t *testing.T) {
+	defer trace("TestSlice_Skip")()
+
+	t.Run("0", func(t *testing.T) {
+		defer trace("TestSlice_Skip/0")()
+
+		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+
+		sorted := []int{}
+		s.Skip(0).Limit(5).Sorted(func(t1, t2 int) bool {
+			return t1 < t2
+		}).ForEach(func(t int) {
+			sorted = append(sorted, t)
+		})
+		want := []int{6, 7, 8, 9, 10}
+		if !reflect.DeepEqual(sorted, want) {
+			t.Errorf("sorted is %v, want %v", sorted, want)
+		}
+	})
+
+	t.Run("5", func(t *testing.T) {
+		defer trace("TestSlice_Skip/5")()
+
+		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+
+		sorted := []int{}
+		s.Skip(5).Limit(5).Sorted(func(t1, t2 int) bool {
+			return t1 < t2
+		}).ForEach(func(t int) {
+			sorted = append(sorted, t)
+		})
+		want := []int{1, 2, 3, 4, 5}
+		if !reflect.DeepEqual(sorted, want) {
+			t.Errorf("sorted is %v, want %v", sorted, want)
+		}
+	})
 }

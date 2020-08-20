@@ -54,5 +54,8 @@ func (ms *mapStream[T]) Limit(maxSize int) Stream[T] {
 }
 
 func (ms *mapStream[T]) Skip(n int) Stream[T] {
-	panic("not implemented yet")
+	gs := ms.newGenericStream()
+
+	go gs.skip(n)
+	return gs
 }
