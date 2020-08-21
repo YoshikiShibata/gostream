@@ -61,5 +61,9 @@ func (ms *mapStream[T]) Skip(n int) Stream[T] {
 }
 
 func (ms *mapStream[T]) ToSlice() []T {
-	panic("Not implemented yet")
+	gs := &genericStream[T]{
+		nextReq:  ms.nextReq,
+		nextData: ms.nextData,
+	}
+	return gs.ToSlice()
 }

@@ -177,5 +177,12 @@ func (gs *genericStream[T]) skip(n int) {
 }
 
 func (gs *genericStream[T]) ToSlice() []T {
-	panic("Not Implemented Yet")
+	var result []T
+
+	gs.nextReq <- struct{}{}
+	for t := range gs.nextData {
+		result = append(result, t)
+		gs.nextReq <- struct{}{}
+	}
+	return result
 }

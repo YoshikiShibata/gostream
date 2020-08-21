@@ -221,3 +221,14 @@ func TestSlice_Skip(t *testing.T) {
 		}
 	})
 }
+
+func TestSlice_ToSlice(t *testing.T) {
+	defer trace("TestSlice_ToSlice")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	result := StreamFromSlice(data).ToSlice()
+
+	if !reflect.DeepEqual(result, data) {
+		t.Errorf("result is %v, want %v", result, data)
+	}
+}

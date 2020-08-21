@@ -255,3 +255,17 @@ func TestMap_Skip(t *testing.T) {
 		}
 	})
 }
+
+func TestMap_ToSlice(t *testing.T) {
+	defer trace("TestMap_ToSlice")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	s := StreamFromSlice(data)
+
+	result := Map(s, func(t int) int {
+		return t
+	}).ToSlice()
+	if !reflect.DeepEqual(result, data) {
+		t.Errorf("result is %v, want %v", result, data)
+	}
+}

@@ -91,5 +91,10 @@ func (ss *sliceStream[T]) Skip(n int) Stream[T] {
 }
 
 func (ss *sliceStream[T]) ToSlice() []T {
-	panic("Not Implemented Yet")
+	gs := &genericStream[T]{
+		nextReq:  ss.nextReq,
+		nextData: ss.nextData,
+	}
+
+	return gs.ToSlice()
 }
