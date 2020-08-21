@@ -2,16 +2,9 @@
 
 package gostream
 
-type Consumer[T any] func(t T)
-type Predicate[T any] func(t T) bool
-type Function[T, R any] func(t T) R
-type Less[T any] func(t1, t2 T) bool
-type BiFunction[T, U, R any] func(t T, u U) R
-type BinaryOperator[T any] BiFunction[T, T, T]
-
 type Stream[T any] interface {
 	// Filter returns a stream consisting of the elements of this stream
-	// that mathe the give predicate.
+	// that match given predicate.
 	Filter(predicate Predicate[T]) Stream[T]
 
 	// map: not supported because "generic method" is not supported:
