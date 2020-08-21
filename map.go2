@@ -67,3 +67,10 @@ func (ms *mapStream[T]) ToSlice() []T {
 	}
 	return gs.ToSlice()
 }
+
+func (ms *mapStream[T]) Reduce(
+	identity T,
+	accumulator BinaryOperator[T],
+) T {
+	panic("Not Implemented Yet")
+}

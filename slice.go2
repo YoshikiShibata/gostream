@@ -98,3 +98,10 @@ func (ss *sliceStream[T]) ToSlice() []T {
 
 	return gs.ToSlice()
 }
+
+func (ss *sliceStream[T]) Reduce(
+	identity T,
+	accumulator BinaryOperator[T],
+) T {
+	panic("Not Implemented Yet")
+}

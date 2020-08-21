@@ -61,6 +61,12 @@ type Stream[T any] interface {
 	// ToSlice returns a slice containing the elements of this stream.
 	ToSlice() []T
 
-	// Reduce(identity T, accumulator BinaryOperator[T] T
+	// Reduce performs a reduction on the elements of this stream, using
+	// the provided identity value and an accumulation function, and returns
+	// the reduced value.
+	Reduce(identity T, accumulator BinaryOperator[T]) T
+
+	// Optional[T] ReduceToOptional(accumulator BinaryOperator[T])
+
 	// Count() int
 }

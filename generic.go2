@@ -186,3 +186,10 @@ func (gs *genericStream[T]) ToSlice() []T {
 	}
 	return result
 }
+
+func (gs *genericStream[T]) Reduce(
+	identity T,
+	accumulator BinaryOperator[T],
+) T {
+	panic("Not Implemented Yet")
+}

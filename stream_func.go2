@@ -42,26 +42,23 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 		seen := make(map[T]bool)
 
 		for range gs.nextReq {
-			gs.prevReq <- struct{}{}
-			data, ok := <-gs.prevData
+			data, ok := gs.getPrevData()
 			if !ok {
-				close(gs.nextData)
-				close(gs.prevReq)
+				gs.close()
 				return
 			}
 
 			for seen[data] {
-				gs.prevReq <- struct{}{}
-				data, ok = <-gs.prevData
+				data, ok = gs.getPrevData()
 				if !ok {
-					close(gs.nextData)
-					close(gs.prevReq)
+					gs.close()
 					return
 				}
 			}
 			gs.nextData <- data
 			seen[data] = true
 		}
+		gs.close()
 	}()
 
 	return gs
@@ -102,3 +99,15 @@ func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
 
 	return StreamFromSlice(dataSlice)
 }
+
+// Reduce performs a reduction on the elements of stream, using the provided
+// identity, accumulationg and combining functions.
+func Reduce[type U, T any](
+	stream Stream[T],
+	identity U,
+	accumulator BiFunction[U, T, U],
+	combiner BinaryOperator[U],
+) U {
+	panic("Not Implemented Yet")
+}
+
