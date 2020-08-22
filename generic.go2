@@ -93,7 +93,7 @@ func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 		return less(dataSlice[i], dataSlice[j])
 	})
 
-	return newSliceStreamImpl(dataSlice)
+	return StreamFromSlice(dataSlice)
 }
 
 func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {

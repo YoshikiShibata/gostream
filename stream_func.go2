@@ -10,17 +10,10 @@ import (
 
 // Distinct returns a stream consisting of the distinct elements
 // (according to ==) of this stream.
-func Distinct[T comparable](stream Stream[T]) Stream[T] {
+func Distinct[type T comparable](stream Stream[T]) Stream[T] {
 	var gs *genericStream[T]
 	switch s := stream.(type) {
 	case *genericStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  s.nextReq,
-			prevData: s.nextData,
-			nextReq:  make(chan struct{}),
-			nextData: make(chan T),
-		}
-	case *mapStream[T]:
 		gs = &genericStream[T]{
 			prevReq:  s.nextReq,
 			prevData: s.nextData,
@@ -59,15 +52,12 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
-func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
+func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
 	var prevReq chan struct{}
 	var prevData chan T
 
 	switch s := stream.(type) {
 	case *genericStream[T]:
-		prevReq = s.nextReq
-		prevData = s.nextData
-	case *mapStream[T]:
 		prevReq = s.nextReq
 		prevData = s.nextData
 	default:
@@ -100,4 +90,3 @@ func Reduce[type U, T any](
 ) U {
 	panic("Not Implemented Yet")
 }
-

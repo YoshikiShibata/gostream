@@ -14,41 +14,35 @@ func Map[type T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 	switch s := stream.(type) {
 	case *genericStream[T]:
 		gs = s
-	case *mapStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  nil,
-			prevData: nil,
-			nextReq:  s.nextReq,
-			nextData: s.nextData,
-		}
 	default:
 		panic(fmt.Sprintf("Unsupported Type: %T", stream))
 	}
 
-	ms := &mapStream[R]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan R),
-	}
+	nextReq := make(chan struct{})
+	nextData := make(chan R)
 
 	go func() {
-		for range ms.nextReq {
+		for range nextReq {
 			gs.nextReq <- struct{}{}
 			t, ok := <-gs.nextData
 			if !ok {
-				close(ms.nextData)
+				close(nextData)
 				close(gs.nextReq)
 				go func() {
-					for range ms.nextReq {
+					for range nextReq {
 					}
 				}()
 				return
 			}
 			r := mapper(t)
-			ms.nextData <- r
+			nextData <- r
 		}
 	}()
 
-	return ms
+	return &genericStream[R]{
+		nextReq:  nextReq,
+		nextData: nextData,
+	}
 }
 
 // FlatMap returns a stream consisting of the results of replacing each

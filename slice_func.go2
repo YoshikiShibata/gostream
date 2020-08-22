@@ -2,7 +2,7 @@
 
 package gostream
 
-func StreamFromSlice[T any](data []T) Stream[T] {
+func StreamFromSlice[type T any](data []T) Stream[T] {
 	nextReq := make(chan struct{})
 	nextData := make(chan T)
 

@@ -2,7 +2,7 @@
 
 package gostream
 
-type Stream[T any] interface {
+type Stream[type T any] interface {
 	// Filter returns a stream consisting of the elements of this stream
 	// that match given predicate.
 	Filter(predicate Predicate[T]) Stream[T]
@@ -18,7 +18,7 @@ type Stream[T any] interface {
 	// flatMapToInt, flatMapToLong, flatMapToDouble: no support
 
 	// distinct: not supported because T is any:
- 	// use Distinct function instead
+	// use Distinct function instead
 
 	// sorted(): no supported because no overload is supported:
 	// use Sorted() function
