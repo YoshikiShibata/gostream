@@ -16,6 +16,14 @@ func (ms *mapStream[T]) newGenericStream() *genericStream[T] {
 	}
 }
 
+func (ms *mapStream[T]) terminalOp(op Consumer[T]) {
+	ms.nextReq <- struct{}{}
+	for t := range ms.nextData {
+		op(t)
+		ms.nextReq <- struct{}{}
+	}
+}
+
 func (ms *mapStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 	gs := ms.newGenericStream()
 
@@ -24,11 +32,7 @@ func (ms *mapStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 }
 
 func (ms *mapStream[T]) ForEach(action Consumer[T]) {
-	ms.nextReq <- struct{}{}
-	for t := range ms.nextData {
-		action(t)
-		ms.nextReq <- struct{}{}
-	}
+	ms.terminalOp(action)
 }
 
 func (ms *mapStream[T]) Sorted(less Less[T]) Stream[T] {
@@ -72,5 +76,11 @@ func (ms *mapStream[T]) Reduce(
 	identity T,
 	accumulator BinaryOperator[T],
 ) T {
-	panic("Not Implemented Yet")
+	result := identity
+
+	ms.terminalOp(func(t T) {
+		result = accumulator(result, t)
+	})
+
+	return result
 }

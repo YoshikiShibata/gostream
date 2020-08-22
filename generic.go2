@@ -42,6 +42,14 @@ func (gs *genericStream[T]) getPrevData() (T, bool) {
 	return data, ok
 }
 
+func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
+	gs.nextReq <- struct{}{}
+	for t := range gs.nextData {
+		op(t)
+		gs.nextReq <- struct{}{}
+	}
+}
+
 func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 	newGS := newGenericStream(gs)
 
@@ -71,21 +79,16 @@ func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 }
 
 func (gs *genericStream[T]) ForEach(action Consumer[T]) {
-	gs.nextReq <- struct{}{}
-	for t := range gs.nextData {
-		action(t)
-		gs.nextReq <- struct{}{}
-	}
+	gs.terminalOp(action)
 }
 
 func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 	var dataSlice []T
 
-	gs.nextReq <- struct{}{}
-	for t := range gs.nextData {
+	gs.terminalOp(func(t T) {
 		dataSlice = append(dataSlice, t)
-		gs.nextReq <- struct{}{}
-	}
+	})
+
 	sort.Slice(dataSlice, func(i, j int) bool {
 		return less(dataSlice[i], dataSlice[j])
 	})
@@ -179,11 +182,10 @@ func (gs *genericStream[T]) skip(n int) {
 func (gs *genericStream[T]) ToSlice() []T {
 	var result []T
 
-	gs.nextReq <- struct{}{}
-	for t := range gs.nextData {
+	gs.terminalOp(func(t T) {
 		result = append(result, t)
-		gs.nextReq <- struct{}{}
-	}
+	})
+
 	return result
 }
 
@@ -191,5 +193,11 @@ func (gs *genericStream[T]) Reduce(
 	identity T,
 	accumulator BinaryOperator[T],
 ) T {
-	panic("Not Implemented Yet")
+	result := identity
+
+	gs.terminalOp(func(t T) {
+		result = accumulator(result, t)
+	})
+
+	return result
 }

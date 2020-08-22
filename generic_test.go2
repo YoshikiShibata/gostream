@@ -277,3 +277,24 @@ func TestGeneric_ToSlice(t *testing.T) {
 		t.Errorf("result is %v, want %v", result, data)
 	}
 }
+
+func TestGeneric_Reduce(t *testing.T) {
+	defer trace("TestGeneric_Reduce")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	s := StreamFromSlice(data)
+	s = s.Filter(func(t int) bool { // Filter returns a genericStream
+		return true
+	})
+
+	sum := s.Reduce(0, func(t1, t2 int) int {
+		return t1 + t2
+	})
+	want := 0
+	for _, d := range data {
+		want += d
+	}
+	if sum != want {
+		t.Errorf("sum is %d, want %d", sum, want)
+	}
+}

@@ -45,6 +45,14 @@ func (ss *sliceStream[T]) newGenericStream() *genericStream[T] {
 	}
 }
 
+func (ss *sliceStream[T]) terminalOp(op Consumer[T]) {
+	ss.nextReq <- struct{}{}
+	for t := range ss.nextData {
+		op(t)
+		ss.nextReq <- struct{}{}
+	}
+}
+
 func (ss *sliceStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 	gs := ss.newGenericStream()
 
@@ -53,11 +61,7 @@ func (ss *sliceStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 }
 
 func (ss *sliceStream[T]) ForEach(action Consumer[T]) {
-	ss.nextReq <- struct{}{}
-	for t := range ss.nextData {
-		action(t)
-		ss.nextReq <- struct{}{}
-	}
+	ss.terminalOp(action)
 }
 
 func (ss *sliceStream[T]) Sorted(less Less[T]) Stream[T] {
@@ -103,5 +107,11 @@ func (ss *sliceStream[T]) Reduce(
 	identity T,
 	accumulator BinaryOperator[T],
 ) T {
-	panic("Not Implemented Yet")
+	result := identity
+
+	ss.terminalOp(func(t T) {
+		result = accumulator(result, t)
+	})
+
+	return result
 }

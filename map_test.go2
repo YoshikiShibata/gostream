@@ -269,3 +269,23 @@ func TestMap_ToSlice(t *testing.T) {
 		t.Errorf("result is %v, want %v", result, data)
 	}
 }
+
+func TestMap_Reduce(t *testing.T) {
+	defer trace("TestMap_Reduce")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	s := StreamFromSlice(data)
+	sum := Map(s, func(t int) int {
+		return t
+	}).Reduce(0, func(t1, t2 int) int {
+		return t1 + t2
+	})
+
+	want := 0
+	for _, d := range data {
+		want += d
+	}
+	if sum != want {
+		t.Errorf("sum is %d, want %d", sum, want)
+	}
+}
