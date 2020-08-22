@@ -28,7 +28,7 @@ func TestGeneric_ForEach(t *testing.T) {
 		stream := StreamFromSlice(tc.input)
 		result := []int{}
 
-		stream.Filter(func(t int) bool { // Filter returns a genericStream
+		stream.Filter(func(t int) bool {
 			return t&1 == 1
 		}).ForEach(func(t int) {
 			result = append(result, t)
@@ -59,7 +59,7 @@ func TestGeneric_Filter(t *testing.T) {
 		stream := StreamFromSlice(tc.input)
 		result := []int{}
 
-		stream.Filter(func(t int) bool { // Filter returns a genericStream
+		stream.Filter(func(t int) bool {
 			return t&1 == 1
 		}).Filter(func(t int) bool {
 			return true
@@ -92,7 +92,7 @@ func TestGeneric_Map(t *testing.T) {
 		stream := StreamFromSlice(tc.input)
 		result := []string{}
 
-		newStream := stream.Filter(func(t int) bool { // Filter returns a genericStream
+		newStream := stream.Filter(func(t int) bool {
 			return t&1 == 1
 		})
 		Map(newStream, strconv.Itoa).
@@ -144,7 +144,7 @@ func TestGeneric_Sorted(t *testing.T) {
 	defer trace("TestGeneric_Sorted")()
 
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
-	s = s.Filter(func(t int) bool { // Filter returns a genericStream
+	s = s.Filter(func(t int) bool {
 		return true
 	})
 
@@ -163,7 +163,7 @@ func TestGeneric_Peek(t *testing.T) {
 	defer trace("TestGeneric_Peek")()
 
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
-	s = s.Filter(func(t int) bool { // Filter returns a genericStream
+	s = s.Filter(func(t int) bool {
 		return true
 	})
 
@@ -197,7 +197,7 @@ func TestGeneric_Limit(t *testing.T) {
 	defer trace("TestGeneric_Limit")()
 
 	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
-	s = s.Filter(func(t int) bool { // Filter returns a genericStream
+	s = s.Filter(func(t int) bool {
 		return true
 	})
 
@@ -222,7 +222,7 @@ func TestGeneric_Skip(t *testing.T) {
 		defer trace("TestGeneric_Skip/0")()
 
 		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
-		s = s.Filter(func(t int) bool { // Filter returns a genericStream
+		s = s.Filter(func(t int) bool {
 			return true
 		})
 
@@ -244,7 +244,7 @@ func TestGeneric_Skip(t *testing.T) {
 		defer trace("TestGeneric_Skip/5")()
 
 		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
-		s = s.Filter(func(t int) bool { // Filter returns a genericStream
+		s = s.Filter(func(t int) bool {
 			return true
 		})
 
@@ -268,7 +268,7 @@ func TestGeneric_ToSlice(t *testing.T) {
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 	s := StreamFromSlice(data)
-	s = s.Filter(func(t int) bool { // Filter returns a genericStream
+	s = s.Filter(func(t int) bool {
 		return true
 	})
 
@@ -283,7 +283,7 @@ func TestGeneric_Reduce(t *testing.T) {
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 	s := StreamFromSlice(data)
-	s = s.Filter(func(t int) bool { // Filter returns a genericStream
+	s = s.Filter(func(t int) bool {
 		return true
 	})
 

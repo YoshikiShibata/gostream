@@ -4,24 +4,22 @@ package gostream
 
 import (
 	"constraints"
-	"fmt"
 	"sort"
 )
 
 // Distinct returns a stream consisting of the distinct elements
 // (according to ==) of this stream.
 func Distinct[type T comparable](stream Stream[T]) Stream[T] {
-	var gs *genericStream[T]
-	switch s := stream.(type) {
-	case *genericStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  s.nextReq,
-			prevData: s.nextData,
-			nextReq:  make(chan struct{}),
-			nextData: make(chan T),
-		}
-	default:
-		panic(fmt.Sprintf("%T is not supported yet", stream))
+	s, ok := stream.(*genericStream[T])
+	if !ok {
+		panic("type assertion failed")
+	}
+
+	gs := &genericStream[T]{
+		prevReq:  s.nextReq,
+		prevData: s.nextData,
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
 	}
 
 	go func() {
@@ -53,16 +51,13 @@ func Distinct[type T comparable](stream Stream[T]) Stream[T] {
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
 func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
-	var prevReq chan struct{}
-	var prevData chan T
-
-	switch s := stream.(type) {
-	case *genericStream[T]:
-		prevReq = s.nextReq
-		prevData = s.nextData
-	default:
-		panic(fmt.Sprintf("%T is not supported yet", stream))
+	s, ok := stream.(*genericStream[T])
+	if !ok {
+		panic("type assertion failed")
 	}
+
+	prevReq := s.nextReq
+	prevData := s.nextData
 
 	var dataSlice []T
 	for {
