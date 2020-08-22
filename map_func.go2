@@ -12,13 +12,6 @@ func Map[type T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 	var gs *genericStream[T]
 
 	switch s := stream.(type) {
-	case *sliceStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  nil,
-			prevData: nil,
-			nextReq:  s.nextReq,
-			nextData: s.nextData,
-		}
 	case *genericStream[T]:
 		gs = s
 	case *mapStream[T]:

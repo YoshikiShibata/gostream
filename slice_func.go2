@@ -2,7 +2,31 @@
 
 package gostream
 
-func StreamFromSlice[T any](slice []T) Stream[T] {
-	return newSliceStreamImpl(slice)
-}
+func StreamFromSlice[T any](data []T) Stream[T] {
+	nextReq := make(chan struct{})
+	nextData := make(chan T)
 
+	go func() {
+		i := 0
+		for range nextReq {
+			if i == len(data) {
+				close(nextData)
+				go func() {
+					for range nextReq {
+					}
+				}()
+				return
+			}
+			if i < len(data) {
+				nextData <- data[i]
+				i++
+			}
+		}
+		close(nextData)
+	}()
+
+	return &genericStream[T]{
+		nextReq:  nextReq,
+		nextData: nextData,
+	}
+}

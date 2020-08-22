@@ -13,13 +13,6 @@ import (
 func Distinct[T comparable](stream Stream[T]) Stream[T] {
 	var gs *genericStream[T]
 	switch s := stream.(type) {
-	case *sliceStream[T]:
-		gs = &genericStream[T]{
-			prevReq:  s.nextReq,
-			prevData: s.nextData,
-			nextReq:  make(chan struct{}),
-			nextData: make(chan T),
-		}
 	case *genericStream[T]:
 		gs = &genericStream[T]{
 			prevReq:  s.nextReq,
@@ -71,9 +64,6 @@ func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
 	var prevData chan T
 
 	switch s := stream.(type) {
-	case *sliceStream[T]:
-		prevReq = s.nextReq
-		prevData = s.nextData
 	case *genericStream[T]:
 		prevReq = s.nextReq
 		prevData = s.nextData
