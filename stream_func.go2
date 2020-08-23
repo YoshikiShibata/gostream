@@ -76,7 +76,7 @@ func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
 		return dataSlice[i] < dataSlice[j]
 	})
 
-	return StreamFromSlice(dataSlice)
+	return Of(dataSlice...)
 }
 
 // Reduce performs a reduction on the elements of stream, using the provided

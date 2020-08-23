@@ -26,7 +26,7 @@ func TestMap_ForEach(t *testing.T) {
 			want:  []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []int{}
 
 		Map(stream, func(t string) int {
@@ -61,7 +61,7 @@ func TestMap_Filter(t *testing.T) {
 			want:  []int{2, 4, 6, 8, 10},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []int{}
 
 		Map(stream, func(t string) int {
@@ -95,7 +95,7 @@ func TestMap_Map(t *testing.T) {
 			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []int{}
 
 		newStream := Map(stream, strconv.Itoa)
@@ -131,7 +131,7 @@ func TestMap_Distinct(t *testing.T) {
 			want: []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []string{}
 
 		newStream := Map(stream, strconv.Itoa)
@@ -147,7 +147,7 @@ func TestMap_Distinct(t *testing.T) {
 func TestMap_Sorted(t *testing.T) {
 	defer trace("TestMap_Sorted")()
 
-	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
 	sorted := []int{}
 	Map(s, func(t int) int {
@@ -165,7 +165,7 @@ func TestMap_Sorted(t *testing.T) {
 func TestMap_Peek(t *testing.T) {
 	defer trace("TestMap_Peek")()
 
-	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
 	var lock sync.Mutex
 	var peeked []int
@@ -198,7 +198,7 @@ func TestMap_Peek(t *testing.T) {
 func TestMap_Limit(t *testing.T) {
 	defer trace("TestMap_Limit")()
 
-	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
 	sorted := []int{}
 	Map(s, func(t int) int {
@@ -220,7 +220,7 @@ func TestMap_Skip(t *testing.T) {
 	t.Run("0", func(t *testing.T) {
 		defer trace("TestMap_Skip/0")()
 
-		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
 		sorted := []int{}
 		Map(s, func(t int) int {
@@ -239,7 +239,7 @@ func TestMap_Skip(t *testing.T) {
 	t.Run("5", func(t *testing.T) {
 		defer trace("TestMap_Skip/0")()
 
-		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
 		sorted := []int{}
 		Map(s, func(t int) int {
@@ -260,7 +260,7 @@ func TestMap_ToSlice(t *testing.T) {
 	defer trace("TestMap_ToSlice")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	s := StreamFromSlice(data)
+	s := Of(data...)
 
 	result := Map(s, func(t int) int {
 		return t
@@ -274,7 +274,7 @@ func TestMap_Reduce(t *testing.T) {
 	defer trace("TestMap_Reduce")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	s := StreamFromSlice(data)
+	s := Of(data...)
 	sum := Map(s, func(t int) int {
 		return t
 	}).Reduce(0, func(t1, t2 int) int {

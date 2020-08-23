@@ -25,7 +25,7 @@ func TestGeneric_ForEach(t *testing.T) {
 			want:  []int{1, 3, 5, 7, 9},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []int{}
 
 		stream.Filter(func(t int) bool {
@@ -56,7 +56,7 @@ func TestGeneric_Filter(t *testing.T) {
 			want:  []int{1, 3, 5, 7, 9},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []int{}
 
 		stream.Filter(func(t int) bool {
@@ -89,7 +89,7 @@ func TestGeneric_Map(t *testing.T) {
 			want:  []string{"1", "3", "5", "7", "9"},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []string{}
 
 		newStream := stream.Filter(func(t int) bool {
@@ -123,7 +123,7 @@ func TestGeneric_Distinct(t *testing.T) {
 			want: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
 		},
 	} {
-		stream := StreamFromSlice(tc.input)
+		stream := Of(tc.input...)
 		result := []int{}
 
 		// Filter returns a genericStream
@@ -143,7 +143,7 @@ func TestGeneric_Distinct(t *testing.T) {
 func TestGeneric_Sorted(t *testing.T) {
 	defer trace("TestGeneric_Sorted")()
 
-	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 	s = s.Filter(func(t int) bool {
 		return true
 	})
@@ -162,7 +162,7 @@ func TestGeneric_Sorted(t *testing.T) {
 func TestGeneric_Peek(t *testing.T) {
 	defer trace("TestGeneric_Peek")()
 
-	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 	s = s.Filter(func(t int) bool {
 		return true
 	})
@@ -196,7 +196,7 @@ func TestGeneric_Peek(t *testing.T) {
 func TestGeneric_Limit(t *testing.T) {
 	defer trace("TestGeneric_Limit")()
 
-	s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 	s = s.Filter(func(t int) bool {
 		return true
 	})
@@ -221,7 +221,7 @@ func TestGeneric_Skip(t *testing.T) {
 	t.Run("0", func(t *testing.T) {
 		defer trace("TestGeneric_Skip/0")()
 
-		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 		s = s.Filter(func(t int) bool {
 			return true
 		})
@@ -243,7 +243,7 @@ func TestGeneric_Skip(t *testing.T) {
 	t.Run("5", func(t *testing.T) {
 		defer trace("TestGeneric_Skip/5")()
 
-		s := StreamFromSlice([]int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1})
+		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 		s = s.Filter(func(t int) bool {
 			return true
 		})
@@ -267,7 +267,7 @@ func TestGeneric_ToSlice(t *testing.T) {
 	defer trace("TestGeneric_ToSlice")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	s := StreamFromSlice(data)
+	s := Of(data...)
 	s = s.Filter(func(t int) bool {
 		return true
 	})
@@ -282,7 +282,7 @@ func TestGeneric_Reduce(t *testing.T) {
 	defer trace("TestGeneric_Reduce")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	s := StreamFromSlice(data)
+	s := Of(data...)
 	s = s.Filter(func(t int) bool {
 		return true
 	})
@@ -303,9 +303,63 @@ func TestGeneric_Count(t *testing.T) {
 	defer trace("TestGeneric_Count")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	count := StreamFromSlice(data).Count()
+	count := Of(data...).Count()
 
 	if count != len(data) {
 		t.Errorf("count is %d, want %d", count, len(data))
 	}
+}
+
+func TestGeneric_AnyMatch(t *testing.T) {
+	defer trace("TestGeneric_AnyMatch")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+
+	t.Run("empty", func(t *testing.T) {
+		defer trace("TestGeneric_AnyMatch/empty")()
+
+		match := Of[int]().AnyMatch(func(t int) bool {
+			return true
+		})
+
+		if match {
+			t.Errorf("match is true, want false")
+		}
+	})
+
+	t.Run("10", func(t *testing.T) {
+		defer trace("TestGeneric_AnyMatch/10")()
+
+		match := Of(data...).AnyMatch(func(t int) bool {
+			return t == 10
+		})
+
+		if !match {
+			t.Errorf("match is false, want true")
+		}
+	})
+
+	t.Run("1", func(t *testing.T) {
+		defer trace("TestGeneric_AnyMatch/1")()
+
+		match := Of(data...).AnyMatch(func(t int) bool {
+			return t == 1
+		})
+
+		if !match {
+			t.Errorf("match is false, want true")
+		}
+	})
+
+	t.Run("99", func(t *testing.T) {
+		defer trace("TestGeneric_AnyMatch/99")()
+
+		match := Of(data...).AnyMatch(func(t int) bool {
+			return t == 99
+		})
+
+		if match {
+			t.Errorf("match is true, want false")
+		}
+	})
 }

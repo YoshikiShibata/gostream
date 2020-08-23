@@ -48,6 +48,7 @@ func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 		op(t)
 		gs.nextReq <- struct{}{}
 	}
+	close(gs.nextReq)
 }
 
 func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
@@ -93,7 +94,7 @@ func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 		return less(dataSlice[i], dataSlice[j])
 	})
 
-	return StreamFromSlice(dataSlice)
+	return Of(dataSlice...)
 }
 
 func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
@@ -211,7 +212,18 @@ func (gs *genericStream[T]) Count() int {
 }
 
 func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
-	panic("Not Implemented Yet")
+	match := false
+
+	gs.nextReq <- struct{}{}
+	for t := range gs.nextData {
+		if predicate(t) {
+			match = true
+			break
+		}
+		gs.nextReq <- struct{}{}
+	}
+	close(gs.nextReq)
+	return match
 }
 
 func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
