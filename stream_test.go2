@@ -3,6 +3,7 @@
 package gostream
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -64,4 +65,68 @@ func TestStream_SortedFunc(t *testing.T) {
 	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
 		t.Errorf("sorted is not sorted: %v", sorted)
 	}
+}
+
+func TestStream_ReducFunc(t *testing.T) {
+	defer trace("TestStream_ReduceFunc")()
+
+	t.Run("int", func(t *testing.T) {
+		defer trace("TestStream_ReduceFunc/int")()
+		var data []int
+		for i := 0; i < 1000; i++ {
+			data = append(data, i)
+		}
+
+		s := StreamFromSlice(data)
+
+		sum := Reduce(s,
+			0,                                   // identity
+			func(u, t int) int { return u + t }, // accumulator
+			func(u, t int) int { return u + t }, // combiner
+		)
+
+		wantSum := 0
+		for _, d := range data {
+			wantSum += d
+		}
+		if sum != wantSum {
+			t.Errorf("sum is %d, want %d", sum, wantSum)
+		}
+	})
+
+	t.Run("string", func(t *testing.T) {
+		defer trace("TestStream_ReduceFunc/string")()
+
+		var data []string
+		for i := 0; i < 1000; i++ {
+			data = append(data, strconv.Itoa(i))
+		}
+
+		s := StreamFromSlice(data)
+
+		sum := Reduce(s,
+			0, // identity
+			func(u int, t string) int {
+				tVal, err := strconv.Atoi(t)
+				if err != nil {
+					panic(fmt.Sprintf("strconv.Atoi(%q) failed: %v", t, err))
+				}
+				return u + tVal
+			}, // accumulator
+			func(u, t int) int { return u + t }, // combiner
+		)
+
+		wantSum := 0
+		for _, d := range data {
+			dVal, err := strconv.Atoi(d)
+			if err != nil {
+				panic(fmt.Sprintf("strconv.Atoi(%q) failed: %v", d, err))
+			}
+
+			wantSum += dVal
+		}
+		if sum != wantSum {
+			t.Errorf("sum is %d, want %d", sum, wantSum)
+		}
+	})
 }

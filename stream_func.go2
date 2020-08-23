@@ -4,7 +4,9 @@ package gostream
 
 import (
 	"constraints"
+	"runtime"
 	"sort"
+	"sync"
 )
 
 // Distinct returns a stream consisting of the distinct elements
@@ -68,6 +70,8 @@ func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
 		}
 		dataSlice = append(dataSlice, data)
 	}
+	close(prevReq)
+
 	sort.Slice(dataSlice, func(i, j int) bool {
 		return dataSlice[i] < dataSlice[j]
 	})
@@ -76,12 +80,53 @@ func Sorted[type T constraints.Ordered](stream Stream[T]) Stream[T] {
 }
 
 // Reduce performs a reduction on the elements of stream, using the provided
-// identity, accumulationg and combining functions.
+// identity, accumulation and combining functions. Note that the accumulator
+// function will be executed in parallel with goroutines. The number of
+// goroutines is GOMAXPROCS..
 func Reduce[type U, T any](
 	stream Stream[T],
 	identity U,
 	accumulator BiFunction[U, T, U],
 	combiner BinaryOperator[U],
 ) U {
-	panic("Not Implemented Yet")
+	s, ok := stream.(*genericStream[T])
+	if !ok {
+		panic("type assertion failed")
+	}
+
+	prevReq := s.nextReq
+	prevData := s.nextData
+
+	gomaxprocs := runtime.GOMAXPROCS(-1)
+	results := make(chan U, gomaxprocs)
+	var wg sync.WaitGroup
+	wg.Add(gomaxprocs)
+
+	for i := 0; i < gomaxprocs; i++ {
+		go func() {
+			defer wg.Done()
+
+			result := identity
+			for {
+				prevReq <- struct{}{}
+				data, ok := <-prevData
+				if !ok {
+					break
+				}
+				result = accumulator(result, data)
+			}
+			results <- result
+		}()
+	}
+	wg.Wait()
+
+	close(prevReq)
+	close(results)
+
+	result := identity
+	for r := range results {
+		result = combiner(result, r)
+	}
+
+	return result
 }
