@@ -363,3 +363,57 @@ func TestGeneric_AnyMatch(t *testing.T) {
 		}
 	})
 }
+
+func TestGeneric_AllMatch(t *testing.T) {
+	defer trace("TestGeneric_AllMatch")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+
+	t.Run("empty", func(t *testing.T) {
+		defer trace("TestGeneric_AllMatch/empty")()
+
+		match := Of[int]().AllMatch(func(t int) bool {
+			return false
+		})
+
+		if !match {
+			t.Errorf("match is true, want false")
+		}
+	})
+
+	t.Run("allmatch", func(t *testing.T) {
+		defer trace("TestGeneric_AllMatch/allmatch")()
+
+		match := Of(data...).AllMatch(func(t int) bool {
+			return 1 <= t && t <= 10
+		})
+
+		if !match {
+			t.Errorf("match is false, want true")
+		}
+	})
+
+	t.Run("1", func(t *testing.T) {
+		defer trace("TestGeneric_AllMatch/1")()
+
+		match := Of(data...).AllMatch(func(t int) bool {
+			return 2 <= t && t <= 10
+		})
+
+		if match {
+			t.Errorf("match is true, want false")
+		}
+	})
+
+	t.Run("10", func(t *testing.T) {
+		defer trace("TestGeneric_AllMatch/10")()
+
+		match := Of(data...).AllMatch(func(t int) bool {
+			return 1 <= t && t <= 9
+		})
+
+		if match {
+			t.Errorf("match is true, want false")
+		}
+	})
+}

@@ -227,7 +227,18 @@ func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
 }
 
 func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
-	panic("Not Implemented Yet")
+	match := true
+
+	gs.nextReq <- struct{}{}
+	for t := range gs.nextData {
+		if !predicate(t) {
+			match = false
+			break
+		}
+		gs.nextReq <- struct{}{}
+	}
+	close(gs.nextReq)
+	return match
 }
 
 func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
