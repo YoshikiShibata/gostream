@@ -60,6 +60,14 @@ type Stream[type T any] interface {
 	Reduce(identity T, accumulator BinaryOperator[T]) T
 
 	// Optional[T] ReduceToOptional(accumulator BinaryOperator[T])
+	// TODO: implement this
 
-	// Count() int
+	// Optional[T] Min(less Less[T])
+	// TODO: implement this
+
+	// Optional[T] Max(less Less[T])
+	// TODO: implement this
+
+	// Count returns the count of elements in this stream.
+	Count() int
 }

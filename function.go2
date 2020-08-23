@@ -23,3 +23,10 @@ type BiFunction[type T, U, R any] func(t T, u U) R
 // BinaryOperator represents an operation upon two operands of the same type,
 // producing a result of the same type as the operands.
 type BinaryOperator[type T any] BiFunction[T, T, T]
+
+// Supplier represents a supplier of results
+type Supplier[type T any] func() T
+
+// BiConsumer represents an operation that accepts two input arguments and
+// returns no result.
+type BiConsumer[type T, U any] func(t T, u U)

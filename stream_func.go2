@@ -130,3 +130,18 @@ func Reduce[type U, T any](
 
 	return result
 }
+
+// Collect performs mutable reduction opertion on the elements of stream. A
+// mutable result is one in which reduced value is a mutable result container
+// such as a slice.
+func Collect[type R, T any](
+	stream Stream[T],
+	supplier Supplier[R],
+	accumulator BiFunction[R, T, R],
+	combiner BiFunction[R, R, R],
+) R {
+	panic("Not implemented yet")
+}
+
+// func CollectByCollector
+// TODO: design and implment this function

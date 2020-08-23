@@ -201,3 +201,11 @@ func (gs *genericStream[T]) Reduce(
 
 	return result
 }
+
+func (gs *genericStream[T]) Count() int {
+	count := 0
+
+	gs.terminalOp(func(t T) { count++ })
+
+	return count
+}

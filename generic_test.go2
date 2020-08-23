@@ -298,3 +298,14 @@ func TestGeneric_Reduce(t *testing.T) {
 		t.Errorf("sum is %d, want %d", sum, want)
 	}
 }
+
+func TestGeneric_Count(t *testing.T) {
+	defer trace("TestGeneric_Count")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	count := StreamFromSlice(data).Count()
+
+	if count != len(data) {
+		t.Errorf("count is %d, want %d", count, len(data))
+	}
+}
