@@ -51,6 +51,17 @@ func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 	close(gs.nextReq)
 }
 
+func (gs *genericStream[T]) terminalOpMatch(match func(t T) bool) {
+	gs.nextReq <- struct{}{}
+	for t := range gs.nextData {
+		if !match(t) {
+			break
+		}
+		gs.nextReq <- struct{}{}
+	}
+	close(gs.nextReq)
+}
+
 func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 	newGS := newGenericStream(gs)
 
@@ -214,33 +225,42 @@ func (gs *genericStream[T]) Count() int {
 func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
 	match := false
 
-	gs.nextReq <- struct{}{}
-	for t := range gs.nextData {
-		if predicate(t) {
-			match = true
-			break
+	gs.terminalOpMatch(func(t T) bool {
+		if !predicate(t) {
+			return true // continue
 		}
-		gs.nextReq <- struct{}{}
-	}
-	close(gs.nextReq)
+
+		match = true
+		return false
+	})
+
 	return match
 }
 
 func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
 	match := true
 
-	gs.nextReq <- struct{}{}
-	for t := range gs.nextData {
-		if !predicate(t) {
-			match = false
-			break
+	gs.terminalOpMatch(func(t T) bool {
+		if predicate(t) {
+			return true // contine
 		}
-		gs.nextReq <- struct{}{}
-	}
-	close(gs.nextReq)
+		match = false
+		return false
+	})
+
 	return match
 }
 
 func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
-	panic("Not Implemented Yet")
+	noneMatch := true
+
+	gs.terminalOpMatch(func(t T) bool {
+		if !predicate(t) {
+			return true // continue
+		}
+		noneMatch = false
+		return false
+	})
+
+	return noneMatch
 }

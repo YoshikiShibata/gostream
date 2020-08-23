@@ -417,3 +417,45 @@ func TestGeneric_AllMatch(t *testing.T) {
 		}
 	})
 }
+
+func TestGeneric_NoneMatch(t *testing.T) {
+	defer trace("TestGeneric_NoneMatch")()
+
+	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+
+	t.Run("empty", func(t *testing.T) {
+		defer trace("TestGeneric_NoneMatch/empty")()
+
+		noneMatch := Of[int]().NoneMatch(func(t int) bool {
+			return false
+		})
+
+		if !noneMatch {
+			t.Errorf("noneMatch is true, want false")
+		}
+	})
+
+	t.Run("match", func(t *testing.T) {
+		defer trace("TestGeneric_NoneMatch/match")()
+
+		noneMatch := Of(data...).NoneMatch(func(t int) bool {
+			return t == 5
+		})
+
+		if noneMatch {
+			t.Errorf("noneMatch is true, want false")
+		}
+	})
+
+	t.Run("noneMatch", func(t *testing.T) {
+		defer trace("TestGeneric_NoneMatch/1")()
+
+		noneMatch := Of(data...).NoneMatch(func(t int) bool {
+			return t < 1 || 10 < t
+		})
+
+		if !noneMatch {
+			t.Errorf("noneMatch is false, want true")
+		}
+	})
+}
