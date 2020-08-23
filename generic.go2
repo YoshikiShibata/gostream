@@ -209,3 +209,15 @@ func (gs *genericStream[T]) Count() int {
 
 	return count
 }
+
+func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
+	panic("Not Implemented Yet")
+}
+
+func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
+	panic("Not Implemented Yet")
+}
+
+func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
+	panic("Not Implemented Yet")
+}
