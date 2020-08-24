@@ -138,8 +138,8 @@ func TestStream_ReducFunc(t *testing.T) {
 	})
 }
 
-func TestStream_Empty(t *testing.T) {
-	defer trace("TestStream_ReduceFunc")()
+func TestStream_EmptyFunc(t *testing.T) {
+	defer trace("TestStream_EmptyFunc")()
 
 	count := 0
 	Empty[int]().ForEach(func(t int) {
@@ -149,4 +149,21 @@ func TestStream_Empty(t *testing.T) {
 	if count > 0 {
 		t.Errorf("count is %d, want 0", count)
 	}
+}
+
+func TestStream_IterateFunc(t *testing.T) {
+	defer trace("TestStream_IterateFunc")()
+
+	lastValue := 0
+
+	Iterate[int](1, func(v int) int {
+		return v + 1
+	}).Limit(100).ForEach(func(v int) {
+		lastValue = v
+	})
+
+	if lastValue != 100 {
+		t.Errorf("lastValue is %d, want 100", lastValue)
+	}
+
 }

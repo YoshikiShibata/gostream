@@ -1,6 +1,7 @@
-2020/08/25 Empty() is implemented
-2020/08/24 NoneMatch() is implemented
-2020/08/24 AllMatch() is implemented
+2020/08/25 Iterate() function is implemented
+2020/08/25 Empty() function is implemented
+2020/08/24 NoneMatch() method is implemented
+2020/08/24 AllMatch() method is implemented
 2020/08/24 Renamed StreamFromSlice() to Of()
 2020/08/24 AnyMatch() is implemented
 2020/08/23 Count() is implemented

@@ -246,3 +246,34 @@ func Empty[type T any]() Stream[T] {
 	close(gs.nextData)
 	return gs
 }
+
+// func OfNillable[type T any] Stream[T]
+// TODO: design and implment this function
+
+// Iterate returns an infinite sequential ordered Stream produces by iterative
+// appliation of a function f to an initial element seed, producing a Stream
+// consisiting of seed, f(seed), f(f(seed)), etc.
+func Iterate[type T any](seed T, f UnaryOperator[T]) Stream[T] {
+	gs := &genericStream[T]{
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+
+	go func() {
+		useSeed := true
+		nextValue := seed
+
+		for range gs.nextReq {
+			if useSeed {
+				gs.nextData <- seed
+				useSeed = false
+			} else {
+				nextValue = f(nextValue)
+				gs.nextData <- nextValue
+			}
+		}
+		close(gs.nextData)
+	}()
+
+	return gs
+}
