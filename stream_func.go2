@@ -4,10 +4,91 @@ package gostream
 
 import (
 	"constraints"
+	"fmt"
 	"runtime"
 	"sort"
 	"sync"
 )
+
+// Map returns a stream consisting of the results of applying the given
+// function to the elements of the given stream.
+func Map[type T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
+	var gs *genericStream[T]
+
+	switch s := stream.(type) {
+	case *genericStream[T]:
+		gs = s
+	default:
+		panic(fmt.Sprintf("Unsupported Type: %T", stream))
+	}
+
+	nextReq := make(chan struct{})
+	nextData := make(chan R)
+
+	go func() {
+		for range nextReq {
+			gs.nextReq <- struct{}{}
+			t, ok := <-gs.nextData
+			if !ok {
+				close(nextData)
+				close(gs.nextReq)
+				go func() {
+					for range nextReq {
+					}
+				}()
+				return
+			}
+			r := mapper(t)
+			nextData <- r
+		}
+	}()
+
+	return &genericStream[R]{
+		nextReq:  nextReq,
+		nextData: nextData,
+	}
+}
+
+// FlatMap returns a stream consisting of the results of replacing each
+// element of stream with the contents of mapped stream produced by applying
+// the provided mapping function to each element.
+func FlatMap[type T, R](
+	stream Stream[T],
+	mapper Function[T, Stream[R]],
+) Stream[R] {
+	panic("not implemented yet")
+}
+
+// Returns a sequential ordered stream whose elements are the specified
+// values.
+func Of[type T any](data ...T) Stream[T] {
+	nextReq := make(chan struct{})
+	nextData := make(chan T)
+
+	go func() {
+		i := 0
+		for range nextReq {
+			if i == len(data) {
+				close(nextData)
+				go func() {
+					for range nextReq {
+					}
+				}()
+				return
+			}
+			if i < len(data) {
+				nextData <- data[i]
+				i++
+			}
+		}
+		close(nextData)
+	}()
+
+	return &genericStream[T]{
+		nextReq:  nextReq,
+		nextData: nextData,
+	}
+}
 
 // Distinct returns a stream consisting of the distinct elements
 // (according to ==) of this stream.
@@ -145,3 +226,23 @@ func Collect[type R, T any](
 
 // func CollectByCollector
 // TODO: design and implment this function
+
+// func Builder[type T any]() Builder[T]
+// TODO: implement this function
+
+// Empty returns an empty Stream
+func Empty[type T any]() Stream[T] {
+	gs := &genericStream[T]{
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+
+	go func() {
+		for range gs.nextReq {
+			// discard all requests
+		}
+	}()
+
+	close(gs.nextData)
+	return gs
+}

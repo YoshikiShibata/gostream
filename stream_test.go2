@@ -9,6 +9,13 @@ import (
 	"testing"
 )
 
+func trace(name string) func() {
+	fmt.Printf("=== RUN %s\n", name)
+	return func() {
+		fmt.Printf("=== END %s\n", name)
+	}
+}
+
 func TestStream_MapFunc(t *testing.T) {
 	defer trace("TestStream_MapFunc")()
 
@@ -129,4 +136,17 @@ func TestStream_ReducFunc(t *testing.T) {
 			t.Errorf("sum is %d, want %d", sum, wantSum)
 		}
 	})
+}
+
+func TestStream_Empty(t *testing.T) {
+	defer trace("TestStream_ReduceFunc")()
+
+	count := 0
+	Empty[int]().ForEach(func(t int) {
+		count++
+	})
+
+	if count > 0 {
+		t.Errorf("count is %d, want 0", count)
+	}
 }

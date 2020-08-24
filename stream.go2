@@ -88,4 +88,10 @@ type Stream[type T any] interface {
 	// necessary for determing the result. If the stream is empty then true is
 	// returned and predicate is not evaluated.
 	NoneMatch(predicate Predicate[T]) bool
+
+	// Optional[T] FindFirst();
+	// TODO: implement this
+
+	// Optional[T] findAny();
+	// TODO: implement this
 }
