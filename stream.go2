@@ -2,7 +2,15 @@
 
 package gostream
 
+type BaseStream[type T any] interface {
+	// Close closes this stream, causing all close handlers for this
+	// stream pipeline to be called.
+	Close()
+}
+
 type Stream[type T any] interface {
+	BaseStream[T]
+
 	// Filter returns a stream consisting of the elements of this stream
 	// that match given predicate.
 	Filter(predicate Predicate[T]) Stream[T]

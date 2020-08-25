@@ -90,6 +90,10 @@ func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 	gs.close()
 }
 
+func (gs *genericStream[T]) Close() {
+	panic("Not Implemented Yet")
+}
+
 func (gs *genericStream[T]) ForEach(action Consumer[T]) {
 	gs.terminalOp(action)
 }
