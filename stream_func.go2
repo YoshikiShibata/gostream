@@ -277,3 +277,38 @@ func Iterate[type T any](seed T, f UnaryOperator[T]) Stream[T] {
 
 	return gs
 }
+
+// IterateN returns a sequential ordered Stream produced by iterative
+// application of the given next function to an initial element,
+// conditioned on satisfying the given code hasNext predicate.
+// stream terminates as soon as the code hasNext predicate returns false.
+func IterateN[type T any](
+	seed T,
+	hasNext Predicate[T],
+	next UnaryOperator[T]) Stream[T] {
+	gs := &genericStream[T]{
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+
+	go func() {
+		nextValue := seed
+		applyNext := false
+
+		for range gs.nextReq {
+			if applyNext {
+				nextValue = next(nextValue)
+			}
+
+			if !hasNext(nextValue) {
+				break
+			}
+
+			gs.nextData <- nextValue
+			applyNext = true
+		}
+		close(gs.nextData)
+	}()
+
+	return gs
+}

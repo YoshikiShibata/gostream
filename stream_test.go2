@@ -165,5 +165,25 @@ func TestStream_IterateFunc(t *testing.T) {
 	if lastValue != 100 {
 		t.Errorf("lastValue is %d, want 100", lastValue)
 	}
+}
 
+func TestStream_IterateNFunc(t *testing.T) {
+	defer trace("TestStream_IterateNFunc")()
+
+	lastValue := 0
+
+	IterateN[int](
+		1, // seed
+		func(v int) bool { // hasNext
+			return v <= 100
+		},
+		func(v int) int { // next
+			return v + 1
+		}).ForEach(func(v int) {
+		lastValue = v
+	})
+
+	if lastValue != 100 {
+		t.Errorf("lastValue is %d, want 100", lastValue)
+	}
 }
