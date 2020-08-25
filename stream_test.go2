@@ -4,7 +4,9 @@ package gostream
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
+	"sort"
 	"strconv"
 	"testing"
 )
@@ -186,4 +188,41 @@ func TestStream_IterateNFunc(t *testing.T) {
 	if lastValue != 100 {
 		t.Errorf("lastValue is %d, want 100", lastValue)
 	}
+}
+
+func TestStream_GenerateFunc(t *testing.T) {
+	defer trace("TestStream_GenerateFunc")()
+
+	t.Run("constant", func(t *testing.T) {
+		defer trace("TestStream_GenerateFunc/constant")()
+
+		Generate[int](func() int {
+			return 777
+		}).Limit(100).ForEach(func(v int) {
+			if v != 777 {
+				t.Errorf("v is %d, want 777", v)
+			}
+		})
+	})
+
+	t.Run("rand", func(t *testing.T) {
+		defer trace("TestStream_GenerateFunc/rand")()
+
+		var results []int
+
+		Generate[int](rand.Int).Limit(100).ForEach(func(v int) {
+			results = append(results, v)
+		})
+
+		sort.Slice(results, func(i, j int) bool {
+			return results[i] < results[j]
+		})
+
+		preValue := results[0]
+		for i := 1; i < len(results); i++ {
+			if preValue == results[i] {
+				t.Errorf("preValue and results[%d] are %d", i, preValue)
+			}
+		}
+	})
 }
