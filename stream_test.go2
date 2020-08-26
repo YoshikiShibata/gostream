@@ -226,3 +226,20 @@ func TestStream_GenerateFunc(t *testing.T) {
 		}
 	})
 }
+
+func TestStream_ConcatFunc(t *testing.T) {
+	defer trace("TestStream_ConcatFunc")()
+
+	a := Iterate[int](1, func(v int) int { return v + 1 }).Limit(100)
+	b := Iterate[int](101, func(v int) int { return v + 1 }).Limit(100)
+	value := 1
+	Concat(a, b).ForEach(func(v int) {
+		if v != value {
+			t.Fatalf("v is %d, want %d", v, value)
+		}
+		value++
+	})
+	if value != 201 {
+		t.Errorf("value is %d, want 201", value)
+	}
+}

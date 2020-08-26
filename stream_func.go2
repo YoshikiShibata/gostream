@@ -227,7 +227,7 @@ func Collect[type R, T any](
 // func CollectByCollector
 // TODO: design and implment this function
 
-// func Builder[type T any]() Builder[T]
+// func NewBuilder[type T any]() Builder[T]
 // TODO: implement this function
 
 // Empty returns an empty Stream
@@ -328,6 +328,48 @@ func Generate[type T any](s Supplier[T]) Stream[T] {
 			gs.nextData <- s()
 		}
 		close(gs.nextData)
+	}()
+
+	return gs
+}
+
+// Concat a lazily concatenated stream whose elements are all the elements of
+// the first stream followed by all the elements of the second stream.
+func Concat[type T any](a, b Stream[T]) Stream[T] {
+	ags := a.(*genericStream[T])
+	bgs := b.(*genericStream[T])
+
+	gs := &genericStream[T]{
+		nextReq:  make(chan struct{}),
+		nextData: make(chan T),
+	}
+
+	go func() {
+		gs.prevReq = ags.nextReq
+		gs.prevData = ags.nextData
+		switchedToB := false
+
+		for range gs.nextReq {
+			data, ok := gs.getPrevData()
+			if !ok {
+				if switchedToB {
+					gs.close()
+					return
+				}
+
+				gs.prevReq = bgs.nextReq
+				gs.prevData = bgs.nextData
+				switchedToB = true
+
+				data, ok = gs.getPrevData()
+				if !ok {
+					gs.close()
+					return
+				}
+			}
+			gs.nextData <- data
+		}
+		gs.close()
 	}()
 
 	return gs

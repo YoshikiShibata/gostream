@@ -100,6 +100,6 @@ type Stream[type T any] interface {
 	// Optional[T] FindFirst();
 	// TODO: implement this
 
-	// Optional[T] findAny();
+	// Optional[T] FindAny();
 	// TODO: implement this
 }

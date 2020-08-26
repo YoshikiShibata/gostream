@@ -7,14 +7,14 @@ import (
 	"sort"
 )
 
-type genericStream[type T any] struct {
+type genericStream[T any] struct {
 	prevReq  chan struct{}
 	prevData chan T
 	nextReq  chan struct{}
 	nextData chan T
 }
 
-func newGenericStream[type T any](gs *genericStream[T]) *genericStream[T] {
+func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 	return &genericStream[T]{
 		prevReq:  gs.nextReq,
 		prevData: gs.nextData,
