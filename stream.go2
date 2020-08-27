@@ -2,13 +2,13 @@
 
 package gostream
 
-type BaseStream[type T any] interface {
+type BaseStream[T any] interface {
 	// Close closes this stream, causing all close handlers for this
 	// stream pipeline to be called.
 	Close()
 }
 
-type Stream[type T any] interface {
+type Stream[T any] interface {
 	BaseStream[T]
 
 	// Filter returns a stream consisting of the elements of this stream
