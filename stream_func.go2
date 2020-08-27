@@ -227,9 +227,6 @@ func Collect[R, T any](
 // func CollectByCollector
 // TODO: design and implment this function
 
-// func NewBuilder[type T any]() Builder[T]
-// TODO: implement this function
-
 // Empty returns an empty Stream
 func Empty[T any]() Stream[T] {
 	gs := &genericStream[T]{

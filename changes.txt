@@ -1,3 +1,4 @@
+2020/08/28 Builder is implemented
 2020/08/27 Concat() function is implemented
 2020/08/26 Generate() function is implemented
 2020/08/26 IterateN() function is implemented
