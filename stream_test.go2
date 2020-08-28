@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-func TestGeneric_ForEach(t *testing.T) {
-	defer trace("TestGeneric_ForEach")()
+func TestStream_ForEach(t *testing.T) {
+	defer trace("TestStream_ForEach")()
 
 	for _, tc := range [...]struct {
 		input []int
@@ -40,8 +40,8 @@ func TestGeneric_ForEach(t *testing.T) {
 	}
 }
 
-func TestGeneric_Filter(t *testing.T) {
-	defer trace("TestGeneric_Filter")()
+func TestStream_Filter(t *testing.T) {
+	defer trace("TestStream_Filter")()
 
 	for _, tc := range [...]struct {
 		input []int
@@ -73,8 +73,8 @@ func TestGeneric_Filter(t *testing.T) {
 	}
 }
 
-func TestGeneric_Map(t *testing.T) {
-	defer trace("TestGeneric_Map")()
+func TestStream_Map(t *testing.T) {
+	defer trace("TestStream_Map")()
 
 	for _, tc := range [...]struct {
 		input []int
@@ -106,8 +106,8 @@ func TestGeneric_Map(t *testing.T) {
 	}
 }
 
-func TestGeneric_Distinct(t *testing.T) {
-	defer trace("TestGeneric_Distinct")()
+func TestStream_Distinct(t *testing.T) {
+	defer trace("TestStream_Distinct")()
 
 	for _, tc := range [...]struct {
 		input []int
@@ -140,8 +140,8 @@ func TestGeneric_Distinct(t *testing.T) {
 	}
 }
 
-func TestGeneric_Sorted(t *testing.T) {
-	defer trace("TestGeneric_Sorted")()
+func TestStream_Sorted(t *testing.T) {
+	defer trace("TestStream_Sorted")()
 
 	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 	s = s.Filter(func(t int) bool {
@@ -159,8 +159,8 @@ func TestGeneric_Sorted(t *testing.T) {
 	}
 }
 
-func TestGeneric_Peek(t *testing.T) {
-	defer trace("TestGeneric_Peek")()
+func TestStream_Peek(t *testing.T) {
+	defer trace("TestStream_Peek")()
 
 	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 	s = s.Filter(func(t int) bool {
@@ -193,8 +193,8 @@ func TestGeneric_Peek(t *testing.T) {
 	lock.Unlock()
 }
 
-func TestGeneric_Limit(t *testing.T) {
-	defer trace("TestGeneric_Limit")()
+func TestStream_Limit(t *testing.T) {
+	defer trace("TestStream_Limit")()
 
 	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 	s = s.Filter(func(t int) bool {
@@ -215,11 +215,11 @@ func TestGeneric_Limit(t *testing.T) {
 	}
 }
 
-func TestGeneric_Skip(t *testing.T) {
-	defer trace("TestGeneric_Skip")()
+func TestStream_Skip(t *testing.T) {
+	defer trace("TestStream_Skip")()
 
 	t.Run("0", func(t *testing.T) {
-		defer trace("TestGeneric_Skip/0")()
+		defer trace("TestStream_Skip/0")()
 
 		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 		s = s.Filter(func(t int) bool {
@@ -241,7 +241,7 @@ func TestGeneric_Skip(t *testing.T) {
 	})
 
 	t.Run("5", func(t *testing.T) {
-		defer trace("TestGeneric_Skip/5")()
+		defer trace("TestStream_Skip/5")()
 
 		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 		s = s.Filter(func(t int) bool {
@@ -263,8 +263,8 @@ func TestGeneric_Skip(t *testing.T) {
 	})
 }
 
-func TestGeneric_ToSlice(t *testing.T) {
-	defer trace("TestGeneric_ToSlice")()
+func TestStream_ToSlice(t *testing.T) {
+	defer trace("TestStream_ToSlice")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 	s := Of(data...)
@@ -278,8 +278,8 @@ func TestGeneric_ToSlice(t *testing.T) {
 	}
 }
 
-func TestGeneric_Reduce(t *testing.T) {
-	defer trace("TestGeneric_Reduce")()
+func TestStream_Reduce(t *testing.T) {
+	defer trace("TestStream_Reduce")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 	s := Of(data...)
@@ -299,8 +299,8 @@ func TestGeneric_Reduce(t *testing.T) {
 	}
 }
 
-func TestGeneric_Count(t *testing.T) {
-	defer trace("TestGeneric_Count")()
+func TestStream_Count(t *testing.T) {
+	defer trace("TestStream_Count")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 	count := Of(data...).Count()
@@ -310,13 +310,13 @@ func TestGeneric_Count(t *testing.T) {
 	}
 }
 
-func TestGeneric_AnyMatch(t *testing.T) {
-	defer trace("TestGeneric_AnyMatch")()
+func TestStream_AnyMatch(t *testing.T) {
+	defer trace("TestStream_AnyMatch")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 
 	t.Run("empty", func(t *testing.T) {
-		defer trace("TestGeneric_AnyMatch/empty")()
+		defer trace("TestStream_AnyMatch/empty")()
 
 		match := Of[int]().AnyMatch(func(t int) bool {
 			return true
@@ -328,7 +328,7 @@ func TestGeneric_AnyMatch(t *testing.T) {
 	})
 
 	t.Run("10", func(t *testing.T) {
-		defer trace("TestGeneric_AnyMatch/10")()
+		defer trace("TestStream_AnyMatch/10")()
 
 		match := Of(data...).AnyMatch(func(t int) bool {
 			return t == 10
@@ -340,7 +340,7 @@ func TestGeneric_AnyMatch(t *testing.T) {
 	})
 
 	t.Run("1", func(t *testing.T) {
-		defer trace("TestGeneric_AnyMatch/1")()
+		defer trace("TestStream_AnyMatch/1")()
 
 		match := Of(data...).AnyMatch(func(t int) bool {
 			return t == 1
@@ -352,7 +352,7 @@ func TestGeneric_AnyMatch(t *testing.T) {
 	})
 
 	t.Run("99", func(t *testing.T) {
-		defer trace("TestGeneric_AnyMatch/99")()
+		defer trace("TestStream_AnyMatch/99")()
 
 		match := Of(data...).AnyMatch(func(t int) bool {
 			return t == 99
@@ -364,13 +364,13 @@ func TestGeneric_AnyMatch(t *testing.T) {
 	})
 }
 
-func TestGeneric_AllMatch(t *testing.T) {
-	defer trace("TestGeneric_AllMatch")()
+func TestStream_AllMatch(t *testing.T) {
+	defer trace("TestStream_AllMatch")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 
 	t.Run("empty", func(t *testing.T) {
-		defer trace("TestGeneric_AllMatch/empty")()
+		defer trace("TestStream_AllMatch/empty")()
 
 		match := Of[int]().AllMatch(func(t int) bool {
 			return false
@@ -382,7 +382,7 @@ func TestGeneric_AllMatch(t *testing.T) {
 	})
 
 	t.Run("allmatch", func(t *testing.T) {
-		defer trace("TestGeneric_AllMatch/allmatch")()
+		defer trace("TestStream_AllMatch/allmatch")()
 
 		match := Of(data...).AllMatch(func(t int) bool {
 			return 1 <= t && t <= 10
@@ -394,7 +394,7 @@ func TestGeneric_AllMatch(t *testing.T) {
 	})
 
 	t.Run("1", func(t *testing.T) {
-		defer trace("TestGeneric_AllMatch/1")()
+		defer trace("TestStream_AllMatch/1")()
 
 		match := Of(data...).AllMatch(func(t int) bool {
 			return 2 <= t && t <= 10
@@ -406,7 +406,7 @@ func TestGeneric_AllMatch(t *testing.T) {
 	})
 
 	t.Run("10", func(t *testing.T) {
-		defer trace("TestGeneric_AllMatch/10")()
+		defer trace("TestStream_AllMatch/10")()
 
 		match := Of(data...).AllMatch(func(t int) bool {
 			return 1 <= t && t <= 9
@@ -418,13 +418,13 @@ func TestGeneric_AllMatch(t *testing.T) {
 	})
 }
 
-func TestGeneric_NoneMatch(t *testing.T) {
-	defer trace("TestGeneric_NoneMatch")()
+func TestStream_NoneMatch(t *testing.T) {
+	defer trace("TestStream_NoneMatch")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
 
 	t.Run("empty", func(t *testing.T) {
-		defer trace("TestGeneric_NoneMatch/empty")()
+		defer trace("TestStream_NoneMatch/empty")()
 
 		noneMatch := Of[int]().NoneMatch(func(t int) bool {
 			return false
@@ -436,7 +436,7 @@ func TestGeneric_NoneMatch(t *testing.T) {
 	})
 
 	t.Run("match", func(t *testing.T) {
-		defer trace("TestGeneric_NoneMatch/match")()
+		defer trace("TestStream_NoneMatch/match")()
 
 		noneMatch := Of(data...).NoneMatch(func(t int) bool {
 			return t == 5
@@ -448,7 +448,7 @@ func TestGeneric_NoneMatch(t *testing.T) {
 	})
 
 	t.Run("noneMatch", func(t *testing.T) {
-		defer trace("TestGeneric_NoneMatch/1")()
+		defer trace("TestStream_NoneMatch/1")()
 
 		noneMatch := Of(data...).NoneMatch(func(t int) bool {
 			return t < 1 || 10 < t
