@@ -247,14 +247,16 @@ func TestStream_ConcatFunc(t *testing.T) {
 func TestStream_FlatMapFunc(t *testing.T) {
 	defer trace("TestStream_FlatMapFunc")()
 
-	runeStream := func(s string) Stream[rune] {
+	mapToRuneStream := func(s string) Stream[rune] {
 		runes := []rune(s)
 		return Of(runes...)
 	}
 
-	result := FlatMap(Of("abc", "d", "efgh", "ijklmn"),
-		runeStream).ToSlice()
+	result := FlatMap(
+		Of("abc", "d", "efgh", "ijklmn"),
+		mapToRuneStream).ToSlice()
 	want := "abcdefghijklmn"
+
 	if len(result) != len(want) {
 		t.Errorf("string(result) is %q, want %q", string(result), want)
 		t.Fatalf("len(result) is %d, want %d", len(result), len(want))
