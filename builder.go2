@@ -6,7 +6,7 @@ package gostream
 // Stream by generating elements individually and adding them to the Builder.
 type Builder[T any] struct {
 	built bool
-	data []T
+	data  []T
 }
 
 // Add adds an element to the stream being built.
