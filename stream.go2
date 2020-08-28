@@ -15,11 +15,6 @@ type Stream[T any] interface {
 	// that match given predicate.
 	Filter(predicate Predicate[T]) Stream[T]
 
-	// map: not supported because "generic method" is not supported:
-	//      use Map function instead
-
-	// mapToInt, mapToLong, mapToDouble: no support
-
 	// flatMap: no supported because "generic method" is not supported:
 	// TODO: Support FlatMap function
 

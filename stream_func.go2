@@ -56,7 +56,50 @@ func FlatMap[T, R](
 	stream Stream[T],
 	mapper Function[T, Stream[R]],
 ) Stream[R] {
-	panic("not implemented yet")
+	gs := stream.(*genericStream[T])
+
+	nextReq := make(chan struct{})
+	nextData := make(chan R)
+
+	var rgs *genericStream[R]
+
+	go func() {
+		for range nextReq {
+			for {
+				if rgs == nil {
+					gs.nextReq <- struct{}{}
+					t, ok := <-gs.nextData
+					if !ok {
+						close(nextData)
+						close(gs.nextReq)
+						go func() {
+							for range nextReq {
+							}
+						}()
+						return
+					}
+
+					r := mapper(t)
+					rgs = r.(*genericStream[R])
+				}
+
+				rgs.nextReq <- struct{}{}
+				r, ok := <-rgs.nextData
+				if !ok {
+					close(rgs.nextReq)
+					rgs = nil
+				} else {
+					nextData <- r
+					break
+				}
+			}
+		}
+	}()
+
+	return &genericStream[R]{
+		nextReq:  nextReq,
+		nextData: nextData,
+	}
 }
 
 // Returns a sequential ordered stream whose elements are the specified
