@@ -15,17 +15,6 @@ type Stream[T any] interface {
 	// that match given predicate.
 	Filter(predicate Predicate[T]) Stream[T]
 
-	// flatMap: no supported because "generic method" is not supported:
-	// TODO: Support FlatMap function
-
-	// flatMapToInt, flatMapToLong, flatMapToDouble: no support
-
-	// distinct: not supported because T is any:
-	// use Distinct function instead
-
-	// sorted(): no supported because no overload is supported:
-	// use Sorted() function
-
 	// Sorted returns a stream consisting of the elements of this stream,
 	// according to the provided Less.
 	Sorted(less Less[T]) Stream[T]
