@@ -52,7 +52,7 @@ func Map[T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 // FlatMap returns a stream consisting of the results of replacing each
 // element of stream with the contents of mapped stream produced by applying
 // the provided mapping function to each element.
-func FlatMap[T, R](
+func FlatMap[T, R any](
 	stream Stream[T],
 	mapper Function[T, Stream[R]],
 ) Stream[R] {
