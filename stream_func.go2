@@ -255,6 +255,7 @@ func Collect[R, T any](
 	s := stream.(*genericStream[T])
 	s.validateState()
 
+	// TODO: implement this
 	panic("Not implemented yet")
 }
 
@@ -277,9 +278,6 @@ func Empty[T any]() Stream[T] {
 	close(gs.nextData)
 	return gs
 }
-
-// func OfNillable[type T any] Stream[T]
-// TODO: design and implment this function
 
 // Iterate returns an infinite sequential ordered Stream produces by iterative
 // appliation of a function f to an initial element seed, producing a Stream

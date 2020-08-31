@@ -37,9 +37,6 @@ type Stream[T any] interface {
 	// ForEach performs an action for each element of this stream.
 	ForEach(action Consumer[T])
 
-	// forEachOrdered: no supported yet
-	// TODO: implement this
-
 	// ToSlice returns a slice containing the elements of this stream.
 	ToSlice() []T
 
