@@ -22,6 +22,8 @@ create a `Stream`.
 - `ToSlice`
 - `Reduce`
 - `ReduceToOptional`
+- `Min`
+- `Max`
 - `Count`
 - `AnyMatch`
 - `AllMatch`

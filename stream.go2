@@ -56,11 +56,13 @@ type Stream[T any] interface {
 	// describing the reduced value, if nay.
 	ReduceToOptional(accumulator BinaryOperator[T]) *Optional[T]
 
-	// Optional[T] Min(less Less[T])
-	// TODO: implement this
+	// Min returns the minimum element of this stream according to the
+	// provided Less.
+	Min(Less Less[T]) *Optional[T]
 
-	// Optional[T] Max(less Less[T])
-	// TODO: implement this
+	// Max returns the maximum element of this stream according to the
+	// provided Less.
+	Max(less Less[T]) *Optional[T]
 
 	// Count returns the count of elements in this stream.
 	Count() int

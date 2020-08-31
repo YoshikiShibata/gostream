@@ -336,6 +336,72 @@ func TestStream_ReduceToOptional(t *testing.T) {
 	})
 }
 
+func TestStream_Min(t *testing.T) {
+	defer trace("TestStream_Min")()
+
+	less := func(t1, t2 int) bool { return t1 < t2 }
+
+	t.Run("empty", func(t *testing.T) {
+		defer trace("TestStream_Min/empty")()
+
+		min := Of[int]().Min(less)
+		if min.IsPresent() {
+			t.Errorf("min.IsPresent() is true, want false")
+		}
+	})
+
+	t.Run("one", func(t *testing.T) {
+		defer trace("TestStream_Min/one")()
+
+		min := Of(777).Min(less)
+		if min.Get() != 777 {
+			t.Errorf("min.Get() is %d, want 777", min.Get())
+		}
+	})
+
+	t.Run("many", func(t *testing.T) {
+		defer trace("TestStream_Min/many")()
+
+		min := Of(-10, -9, 0, 1, 2, 9, 10).Min(less)
+		if min.Get() != -10 {
+			t.Errorf("min.Get() is %d, want -10", min.Get())
+		}
+	})
+}
+
+func TestStream_Max(t *testing.T) {
+	defer trace("TestStream_Max")()
+
+	less := func(t1, t2 int) bool { return t1 < t2 }
+
+	t.Run("empty", func(t *testing.T) {
+		defer trace("TestStream_Max/empty")()
+
+		min := Of[int]().Max(less)
+		if min.IsPresent() {
+			t.Errorf("min.IsPresent() is true, want false")
+		}
+	})
+
+	t.Run("one", func(t *testing.T) {
+		defer trace("TestStream_Max/one")()
+
+		min := Of(777).Max(less)
+		if min.Get() != 777 {
+			t.Errorf("min.Get() is %d, want 777", min.Get())
+		}
+	})
+
+	t.Run("many", func(t *testing.T) {
+		defer trace("TestStream_Max/many")()
+
+		min := Of(-10, -9, 0, 1, 2, 9, 10).Max(less)
+		if min.Get() != 10 {
+			t.Errorf("min.Get() is %d, want 10", min.Get())
+		}
+	})
+}
+
 func TestStream_Count(t *testing.T) {
 	defer trace("TestStream_Count")()
 
