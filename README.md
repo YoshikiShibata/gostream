@@ -28,6 +28,7 @@ create a `Stream`.
 - `AnyMatch`
 - `AllMatch`
 - `NoneMatch`
+- `FindFirst`
 
 With the Go2 Generic, an interface cannot provided so-called **generic method** (in Java terms): instead, this package provides top-level functions of which the first
 parameter is a `Stream`:

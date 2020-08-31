@@ -370,3 +370,22 @@ func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
 
 	return noneMatch
 }
+
+func (gs *genericStream[T]) FindFirst() *Optional[T] {
+	gs.validateState()
+
+	foundAny := false
+	var result T
+
+	gs.terminalOpMatch(func(t T) bool {
+		foundAny = true
+		result = t
+
+		return false
+	})
+
+	if foundAny {
+		return OptionalOf(result)
+	}
+	return OptionalEmpty[T]()
+}

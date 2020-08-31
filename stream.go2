@@ -34,9 +34,6 @@ type Stream[T any] interface {
 	// will be returned.
 	Skip(n int) Stream[T]
 
-	// takeWhile, dropWhile: no supported because I don't understand them yet
-	// TODO: support those function
-
 	// ForEach performs an action for each element of this stream.
 	ForEach(action Consumer[T])
 
@@ -85,9 +82,7 @@ type Stream[T any] interface {
 	// returned and predicate is not evaluated.
 	NoneMatch(predicate Predicate[T]) bool
 
-	// Optional[T] FindFirst();
-	// TODO: implement this
-
-	// Optional[T] FindAny();
-	// TODO: implement this
+	// FindFirst returns an Optional describing the first element of this
+	// stream or an empty Optional if the stream is empty.
+	FindFirst() *Optional[T]
 }
