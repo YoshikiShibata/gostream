@@ -8,6 +8,8 @@ import (
 )
 
 type genericStream[T any] struct {
+	closed bool
+
 	prevReq  chan struct{}
 	prevData chan T
 	nextReq  chan struct{}
@@ -23,6 +25,11 @@ func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 	}
 }
 
+func (gs *genericStream[T]) validateState() {
+	if gs.closed {
+		panic("stream has already been closed")
+	}
+}
 func (gs *genericStream[T]) discard(c <-chan struct{}) {
 	go func() {
 		for range c {
@@ -34,6 +41,8 @@ func (gs *genericStream[T]) close() {
 	close(gs.nextData)
 	close(gs.prevReq)
 	gs.discard(gs.nextReq)
+
+	gs.closed = true
 }
 
 func (gs *genericStream[T]) getPrevData() (T, bool) {
@@ -49,6 +58,7 @@ func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 		gs.nextReq <- struct{}{}
 	}
 	close(gs.nextReq)
+	gs.closed = true
 }
 
 func (gs *genericStream[T]) terminalOpMatch(match func(t T) bool) {
@@ -60,9 +70,12 @@ func (gs *genericStream[T]) terminalOpMatch(match func(t T) bool) {
 		gs.nextReq <- struct{}{}
 	}
 	close(gs.nextReq)
+	gs.closed = true
 }
 
 func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
+	gs.validateState()
+
 	newGS := newGenericStream(gs)
 
 	go newGS.filter(predicate)
@@ -91,14 +104,20 @@ func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 }
 
 func (gs *genericStream[T]) Close() {
+	gs.validateState()
+
 	panic("Not Implemented Yet")
 }
 
 func (gs *genericStream[T]) ForEach(action Consumer[T]) {
+	gs.validateState()
+
 	gs.terminalOp(action)
 }
 
 func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
+	gs.validateState()
+
 	var dataSlice []T
 
 	gs.terminalOp(func(t T) {
@@ -113,6 +132,8 @@ func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 }
 
 func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
+	gs.validateState()
+
 	newGS := newGenericStream(gs)
 
 	go newGS.peek(action)
@@ -133,6 +154,8 @@ func (gs *genericStream[T]) peek(action Consumer[T]) {
 }
 
 func (gs *genericStream[T]) Limit(maxSize int) Stream[T] {
+	gs.validateState()
+
 	newGS := newGenericStream(gs)
 
 	go newGS.limit(maxSize)
@@ -166,6 +189,8 @@ func (gs *genericStream[T]) limit(maxSize int) {
 }
 
 func (gs *genericStream[T]) Skip(n int) Stream[T] {
+	gs.validateState()
+
 	newGS := newGenericStream(gs)
 
 	go newGS.skip(n)
@@ -196,6 +221,8 @@ func (gs *genericStream[T]) skip(n int) {
 }
 
 func (gs *genericStream[T]) ToSlice() []T {
+	gs.validateState()
+
 	var result []T
 
 	gs.terminalOp(func(t T) {
@@ -209,6 +236,8 @@ func (gs *genericStream[T]) Reduce(
 	identity T,
 	accumulator BinaryOperator[T],
 ) T {
+	gs.validateState()
+
 	result := identity
 
 	gs.terminalOp(func(t T) {
@@ -221,6 +250,8 @@ func (gs *genericStream[T]) Reduce(
 func (gs *genericStream[T]) ReduceToOptional(
 	accumulator BinaryOperator[T],
 ) *Optional[T] {
+	gs.validateState()
+
 	foundAny := false
 	var result T
 
@@ -240,6 +271,8 @@ func (gs *genericStream[T]) ReduceToOptional(
 }
 
 func (gs *genericStream[T]) Min(less Less[T]) *Optional[T] {
+	gs.validateState()
+
 	foundAny := false
 	var result T
 
@@ -259,6 +292,8 @@ func (gs *genericStream[T]) Min(less Less[T]) *Optional[T] {
 }
 
 func (gs *genericStream[T]) Max(less Less[T]) *Optional[T] {
+	gs.validateState()
+
 	foundAny := false
 	var result T
 
@@ -278,6 +313,8 @@ func (gs *genericStream[T]) Max(less Less[T]) *Optional[T] {
 }
 
 func (gs *genericStream[T]) Count() int {
+	gs.validateState()
+
 	count := 0
 
 	gs.terminalOp(func(t T) { count++ })
@@ -286,6 +323,8 @@ func (gs *genericStream[T]) Count() int {
 }
 
 func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
+	gs.validateState()
+
 	match := false
 
 	gs.terminalOpMatch(func(t T) bool {
@@ -301,6 +340,8 @@ func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
 }
 
 func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
+	gs.validateState()
+
 	match := true
 
 	gs.terminalOpMatch(func(t T) bool {
@@ -315,6 +356,8 @@ func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
 }
 
 func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
+	gs.validateState()
+
 	noneMatch := true
 
 	gs.terminalOpMatch(func(t T) bool {

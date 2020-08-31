@@ -4,7 +4,6 @@ package gostream
 
 import (
 	"constraints"
-	"fmt"
 	"runtime"
 	"sort"
 	"sync"
@@ -13,14 +12,8 @@ import (
 // Map returns a stream consisting of the results of applying the given
 // function to the elements of the given stream.
 func Map[T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
-	var gs *genericStream[T]
-
-	switch s := stream.(type) {
-	case *genericStream[T]:
-		gs = s
-	default:
-		panic(fmt.Sprintf("Unsupported Type: %T", stream))
-	}
+	gs := stream.(*genericStream[T])
+	gs.validateState()
 
 	nextReq := make(chan struct{})
 	nextData := make(chan R)
@@ -57,6 +50,7 @@ func FlatMap[T, R any](
 	mapper Function[T, Stream[R]],
 ) Stream[R] {
 	gs := stream.(*genericStream[T])
+	gs.validateState()
 
 	nextReq := make(chan struct{})
 	nextData := make(chan R)
@@ -136,10 +130,8 @@ func Of[T any](data ...T) Stream[T] {
 // Distinct returns a stream consisting of the distinct elements
 // (according to ==) of this stream.
 func Distinct[T comparable](stream Stream[T]) Stream[T] {
-	s, ok := stream.(*genericStream[T])
-	if !ok {
-		panic("type assertion failed")
-	}
+	s := stream.(*genericStream[T])
+	s.validateState()
 
 	gs := &genericStream[T]{
 		prevReq:  s.nextReq,
@@ -177,10 +169,8 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
 func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
-	s, ok := stream.(*genericStream[T])
-	if !ok {
-		panic("type assertion failed")
-	}
+	s := stream.(*genericStream[T])
+	s.validateState()
 
 	prevReq := s.nextReq
 	prevData := s.nextData
@@ -213,10 +203,8 @@ func Reduce[U, T any](
 	accumulator BiFunction[U, T, U],
 	combiner BinaryOperator[U],
 ) U {
-	s, ok := stream.(*genericStream[T])
-	if !ok {
-		panic("type assertion failed")
-	}
+	s := stream.(*genericStream[T])
+	s.validateState()
 
 	prevReq := s.nextReq
 	prevData := s.nextData
@@ -264,6 +252,9 @@ func Collect[R, T any](
 	accumulator BiFunction[R, T, R],
 	combiner BiFunction[R, R, R],
 ) R {
+	s := stream.(*genericStream[T])
+	s.validateState()
+
 	panic("Not implemented yet")
 }
 
@@ -378,6 +369,8 @@ func Generate[T any](s Supplier[T]) Stream[T] {
 func Concat[T any](a, b Stream[T]) Stream[T] {
 	ags := a.(*genericStream[T])
 	bgs := b.(*genericStream[T])
+	ags.validateState()
+	bgs.validateState()
 
 	gs := &genericStream[T]{
 		nextReq:  make(chan struct{}),
