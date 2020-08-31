@@ -1,4 +1,5 @@
-2020/08/20 Optional struct and its associated funcs are implemented, but there is no test code yet.
+2020/08/31 ReduceToOptional() method is implemented
+2020/08/30 Optional struct and its associated funcs are implemented, but there is no test code yet.
 2020/08/29 FlatMap() function is implemented
 2020/08/28 Builder is implemented
 2020/08/27 Concat() function is implemented

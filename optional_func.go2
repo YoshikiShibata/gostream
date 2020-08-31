@@ -10,6 +10,12 @@ func OptionalOf[T any](value T) *Optional[T] {
 	}
 }
 
+// OptionalEmtpy returns an empty Optional instance. No value is present for
+// this Optional.
+func OptionalEmpty[T any]() *Optional[T] {
+	return &Optional[T]{}
+}
+
 // OptionalMap returns the result applying the give mapping function to a value
 // if the value is present, otherwise returns an empty Optional
 func OptionalMap[U, T any](

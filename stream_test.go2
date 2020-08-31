@@ -282,12 +282,7 @@ func TestStream_Reduce(t *testing.T) {
 	defer trace("TestStream_Reduce")()
 
 	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	s := Of(data...)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
-
-	sum := s.Reduce(0, func(t1, t2 int) int {
+	sum := Of(data...).Reduce(0, func(t1, t2 int) int {
 		return t1 + t2
 	})
 	want := 0
@@ -297,6 +292,48 @@ func TestStream_Reduce(t *testing.T) {
 	if sum != want {
 		t.Errorf("sum is %d, want %d", sum, want)
 	}
+}
+
+func TestStream_ReduceToOptional(t *testing.T) {
+	defer trace("TestStream_ReduceToOptional")()
+
+	t.Run("emtpy", func(t *testing.T) {
+		defer trace("TestStream_ReduceToOptional/empty")()
+
+		sum := Of[int]().ReduceToOptional(func(t1, t2 int) int {
+			return t1 + t2
+		})
+		if sum.IsPresent() {
+			t.Errorf("sum.IsPresent() is true, want false")
+		}
+	})
+
+	t.Run("one", func(t *testing.T) {
+		defer trace("TestStream_ReduceToOptional/one")()
+
+		sum := Of[int](777).ReduceToOptional(func(t1, t2 int) int {
+			return t1 + t2
+		})
+		if sum.Get() != 777 {
+			t.Errorf("sum.Get() is %d, want 777", sum.Get())
+		}
+	})
+
+	t.Run("many", func(t *testing.T) {
+		defer trace("TestStream_ReduceToOptional/many")()
+
+		data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+		sum := Of(data...).ReduceToOptional(func(t1, t2 int) int {
+			return t1 + t2
+		})
+		want := 0
+		for _, d := range data {
+			want += d
+		}
+		if sum.Get() != want {
+			t.Errorf("sum is %d, want %d", sum.Get(), want)
+		}
+	})
 }
 
 func TestStream_Count(t *testing.T) {

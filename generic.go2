@@ -218,6 +218,27 @@ func (gs *genericStream[T]) Reduce(
 	return result
 }
 
+func (gs *genericStream[T]) ReduceToOptional(
+	accumulator BinaryOperator[T],
+) *Optional[T] {
+
+	foundAny := false
+	var result T
+	gs.terminalOp(func(t T) {
+		if !foundAny {
+			foundAny = true
+			result = t
+		} else {
+			result = accumulator(result, t)
+		}
+	})
+
+	if foundAny {
+		return OptionalOf(result)
+	}
+	return OptionalEmpty[T]()
+}
+
 func (gs *genericStream[T]) Count() int {
 	count := 0
 

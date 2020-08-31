@@ -51,8 +51,10 @@ type Stream[T any] interface {
 	// the reduced value.
 	Reduce(identity T, accumulator BinaryOperator[T]) T
 
-	// Optional[T] ReduceToOptional(accumulator BinaryOperator[T])
-	// TODO: implement this
+	// ReduceToOptional performs a reduction on the elements of this strem,
+	// using an associative accumulation function, and returns an Optional
+	// describing the reduced value, if nay.
+	ReduceToOptional(accumulator BinaryOperator[T]) *Optional[T]
 
 	// Optional[T] Min(less Less[T])
 	// TODO: implement this

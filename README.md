@@ -21,6 +21,7 @@ create a `Stream`.
 - `ForEach`
 - `ToSlice`
 - `Reduce`
+- `ReduceToOptional`
 - `Count`
 - `AnyMatch`
 - `AllMatch`
