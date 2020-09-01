@@ -1,0 +1,30 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+// Collector is a mutable reduction operation that accumulates input elements
+// into a mutable result container.
+type Collector[T, A, R any] struct {
+	supplier    Supplier[A]
+	accumulator BiConsumer[A, T]
+	combiner    BinaryOperator[A]
+}
+
+// Supplier is a function that creates and returns a new mutable result
+// container.
+func (c *Collector[T, A, R]) Supplier() Supplier[A] {
+	return c.supplier
+}
+
+// Accumulator is a function that folds a value into a mutable result
+// container.
+func (c *Collector[T, A, R]) Accumulator() BiConsumer[A, T] {
+	return c.accumulator
+}
+
+// Combiner is a function that accepts two partial results and merges them.
+// The combiner function may fold state from one argument into the other and
+// return that, or may return a new result container.
+func (c *Collector[T, A, R]) Combiner() BinaryOperator[A] {
+	return c.combiner
+}
