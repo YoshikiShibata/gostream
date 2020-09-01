@@ -76,11 +76,12 @@ func TestStream_SortedFunc(t *testing.T) {
 	}
 }
 
-func TestStream_ReducFunc(t *testing.T) {
+func TestStream_ReduceFunc(t *testing.T) {
 	defer trace("TestStream_ReduceFunc")()
 
 	t.Run("int", func(t *testing.T) {
 		defer trace("TestStream_ReduceFunc/int")()
+
 		var data []int
 		for i := 0; i < 1000; i++ {
 			data = append(data, i)
@@ -136,6 +137,49 @@ func TestStream_ReducFunc(t *testing.T) {
 		}
 		if sum != wantSum {
 			t.Errorf("sum is %d, want %d", sum, wantSum)
+		}
+	})
+}
+
+func TestStream_CollectFunc(t *testing.T) {
+	defer trace("TestStream_CollectFunc")()
+
+	t.Run("int", func(t *testing.T) {
+		defer trace("TestStream_CollectFunc/int")()
+
+		var data []int
+		for i := 0; i < 1000; i++ {
+			data = append(data, i)
+		}
+
+		s := Of(data...)
+
+		// Action
+		result := Collect(s,
+			func() *[]int { // supplier
+				return &[]int{}
+			},
+			func(r *[]int, t int) *[]int { // accumulator
+				*r = append(*r, t)
+				return r
+			},
+			func(r1, r2 *[]int) *[]int { // combiner
+				r := append(*r1, *r2...)
+				return &r
+			},
+		)
+
+		// Check
+		if len(*result) != len(data) {
+			t.Fatalf("len(*result) is %d, want %d", len(*result), len(data))
+		}
+
+		sort.Slice(*result, func(i, j int) bool {
+			return (*result)[i] < (*result)[j]
+		})
+
+		if !reflect.DeepEqual(*result, data) {
+			t.Errorf("*result is  %v\n, want %v", *result, data)
 		}
 	})
 }

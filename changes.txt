@@ -1,3 +1,4 @@
+2020/09/02 Collection() function is implemented
 2020/09/01 FindFirst() method is implemented
 2020/09/01 Max() method is implemented
 2020/09/01 Min() method is implemented

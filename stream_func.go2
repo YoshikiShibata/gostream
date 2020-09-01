@@ -203,6 +203,23 @@ func Reduce[U, T any](
 	accumulator BiFunction[U, T, U],
 	combiner BinaryOperator[U],
 ) U {
+	return Collect(stream,
+		func() U { return identity },
+		accumulator,
+		BiFunction[U, U, U](combiner),
+	)
+}
+
+// Collect performs mutable reduction opertion on the elements of stream. A
+// mutable result is one in which reduced value is a mutable result container
+// such as a slice. Note that the accumulator function will be executed in
+// parallel with goroutines. The number of goroutines is GOMAXPROCS.
+func Collect[R, T any](
+	stream Stream[T],
+	supplier Supplier[R],
+	accumulator BiFunction[R, T, R],
+	combiner BiFunction[R, R, R],
+) R {
 	s := stream.(*genericStream[T])
 	s.validateState()
 
@@ -210,7 +227,7 @@ func Reduce[U, T any](
 	prevData := s.nextData
 
 	gomaxprocs := runtime.GOMAXPROCS(-1)
-	results := make(chan U, gomaxprocs)
+	results := make(chan R, gomaxprocs)
 	var wg sync.WaitGroup
 	wg.Add(gomaxprocs)
 
@@ -218,7 +235,7 @@ func Reduce[U, T any](
 		go func() {
 			defer wg.Done()
 
-			result := identity
+			result := supplier()
 			for {
 				prevReq <- struct{}{}
 				data, ok := <-prevData
@@ -235,28 +252,12 @@ func Reduce[U, T any](
 	close(prevReq)
 	close(results)
 
-	result := identity
+	result := supplier()
 	for r := range results {
 		result = combiner(result, r)
 	}
 
 	return result
-}
-
-// Collect performs mutable reduction opertion on the elements of stream. A
-// mutable result is one in which reduced value is a mutable result container
-// such as a slice.
-func Collect[R, T any](
-	stream Stream[T],
-	supplier Supplier[R],
-	accumulator BiFunction[R, T, R],
-	combiner BiFunction[R, R, R],
-) R {
-	s := stream.(*genericStream[T])
-	s.validateState()
-
-	// TODO: implement this
-	panic("Not implemented yet")
 }
 
 // func CollectByCollector

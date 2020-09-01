@@ -38,6 +38,7 @@ parameter is a `Stream`:
 - `Distinct`
 - `Sorted`
 - `Reduce`
+- `Collect`
 - `Empty`
 - `Iterate`
 - `IteratN`
