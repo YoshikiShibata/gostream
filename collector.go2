@@ -8,6 +8,7 @@ type Collector[T, A, R any] struct {
 	supplier    Supplier[A]
 	accumulator BiConsumer[A, T]
 	combiner    BinaryOperator[A]
+	finisher    Function[A, R]
 }
 
 // Supplier is a function that creates and returns a new mutable result
@@ -27,4 +28,10 @@ func (c *Collector[T, A, R]) Accumulator() BiConsumer[A, T] {
 // return that, or may return a new result container.
 func (c *Collector[T, A, R]) Combiner() BinaryOperator[A] {
 	return c.combiner
+}
+
+// Finisher performs the final transformation from the intermediate
+// accumulation type A to the final result Type R
+func (c *Collector[T, A, R]) Finisher() Function[A, R] {
+	return c.finisher
 }

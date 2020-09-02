@@ -159,13 +159,11 @@ func TestStream_CollectFunc(t *testing.T) {
 			func() *[]int { // supplier
 				return &[]int{}
 			},
-			func(r *[]int, t int) *[]int { // accumulator
+			func(r *[]int, t int) { // accumulator
 				*r = append(*r, t)
-				return r
 			},
-			func(r1, r2 *[]int) *[]int { // combiner
-				r := append(*r1, *r2...)
-				return &r
+			func(r1, r2 *[]int) { // combiner
+				*r1 = append(*r1, *r2...)
 			},
 		)
 

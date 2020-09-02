@@ -4,7 +4,6 @@ package gostream
 
 import (
 	"constraints"
-	"runtime"
 	"sort"
 	"sync"
 )
@@ -194,40 +193,27 @@ func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
 }
 
 // Reduce performs a reduction on the elements of stream, using the provided
-// identity, accumulation and combining functions. Note that the accumulator
-// function will be executed in parallel with goroutines. The number of
-// goroutines is GOMAXPROCS..
+// identity, accumulation and combining functions.
 func Reduce[U, T any](
 	stream Stream[T],
 	identity U,
 	accumulator BiFunction[U, T, U],
 	combiner BinaryOperator[U],
 ) U {
-	return Collect(stream,
-		func() U { return identity },
-		accumulator,
-		BiFunction[U, U, U](combiner),
-	)
-}
-
-// Collect performs mutable reduction opertion on the elements of stream. A
-// mutable result is one in which reduced value is a mutable result container
-// such as a slice. Note that the accumulator function will be executed in
-// parallel with goroutines. The number of goroutines is GOMAXPROCS.
-func Collect[R, T any](
-	stream Stream[T],
-	supplier Supplier[R],
-	accumulator BiFunction[R, T, R],
-	combiner BiFunction[R, R, R],
-) R {
 	s := stream.(*genericStream[T])
 	s.validateState()
 
 	prevReq := s.nextReq
 	prevData := s.nextData
 
-	gomaxprocs := runtime.GOMAXPROCS(-1)
-	results := make(chan R, gomaxprocs)
+	// parallel execution is not implemented yet.
+	// When the parallel execution is supported, then
+	// uncomment this line out.
+	//
+	// gomaxprocs := runtime.GOMAXPROCS(-1)
+
+	gomaxprocs := 1
+	results := make(chan U, gomaxprocs)
 	var wg sync.WaitGroup
 	wg.Add(gomaxprocs)
 
@@ -235,7 +221,7 @@ func Collect[R, T any](
 		go func() {
 			defer wg.Done()
 
-			result := supplier()
+			result := identity
 			for {
 				prevReq <- struct{}{}
 				data, ok := <-prevData
@@ -252,7 +238,7 @@ func Collect[R, T any](
 	close(prevReq)
 	close(results)
 
-	result := supplier()
+	result := identity
 	for r := range results {
 		result = combiner(result, r)
 	}
@@ -260,8 +246,79 @@ func Collect[R, T any](
 	return result
 }
 
-// func CollectByCollector
-// TODO: design and implment this function
+// Collect performs mutable reduction opertion on the elements of stream. A
+// mutable result is one in which reduced value is a mutable result container
+// such as a slice.
+func Collect[R, T any](
+	stream Stream[T],
+	supplier Supplier[R],
+	accumulator BiConsumer[R, T],
+	combiner BiConsumer[R, R],
+) R {
+	s := stream.(*genericStream[T])
+	s.validateState()
+
+	prevReq := s.nextReq
+	prevData := s.nextData
+
+	// parallel execution is not implemented yet.
+	// When the parallel execution is supported, then
+	// uncomment this line out.
+	//
+	// gomaxprocs := runtime.GOMAXPROCS(-1)
+
+	gomaxprocs := 1
+	results := make(chan R, gomaxprocs)
+	var wg sync.WaitGroup
+	wg.Add(gomaxprocs)
+
+	for i := 0; i < gomaxprocs; i++ {
+		go func() {
+			defer wg.Done()
+
+			result := supplier()
+			for {
+				prevReq <- struct{}{}
+				data, ok := <-prevData
+				if !ok {
+					break
+				}
+				accumulator(result, data)
+			}
+			results <- result
+		}()
+	}
+	wg.Wait()
+
+	close(prevReq)
+	close(results)
+
+	result := supplier()
+	for r := range results {
+		combiner(result, r)
+	}
+
+	return result
+}
+
+// CollectByCollector performs mutable reduction operation on the elements of
+// stream using a Collector. A Collector encapsulates the functions used as
+// arguments to Collect(Supplier, BiConsumer, BiConsumer), allowing for
+// resuse of collection strategies and composition of collect operations such
+// as multiple-level grouping or partitioning.
+func CollectByCollector[T, R, A any](
+	stream Stream[T],
+	collector Collector[T, A, R],
+) R {
+	supplier := collector.Supplier()
+	accumulator := collector.Accumulator()
+	combiner := func(r, t A) {
+		_ = collector.Combiner()(r, t)
+	}
+
+	a := Collect(stream, supplier, accumulator, combiner)
+	return collector.Finisher()(a)
+}
 
 // Empty returns an empty Stream
 func Empty[T any]() Stream[T] {
