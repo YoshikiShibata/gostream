@@ -1,0 +1,24 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+// ToSliceCollector returns a Collector for T.
+// Probably we don't need this function because there is ToSlice() method.
+func ToSliceCollector[T any]() *Collector[T, *[]T, []T] {
+	return &Collector[T, *[]T, []T]{
+		supplier: func() *[]T {
+			var t []T
+			return &t
+		},
+		accumulator: func(t1 *[]T, t2 T) {
+			*t1 = append(*t1, t2)
+		},
+		combiner: func(left, right *[]T) *[]T {
+			*left = append(*left, *right...)
+			return left
+		},
+		finisher: func(t *[]T) []T {
+			return *t
+		},
+	}
+}

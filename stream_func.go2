@@ -308,7 +308,7 @@ func Collect[R, T any](
 // as multiple-level grouping or partitioning.
 func CollectByCollector[T, R, A any](
 	stream Stream[T],
-	collector Collector[T, A, R],
+	collector *Collector[T, A, R],
 ) R {
 	supplier := collector.Supplier()
 	accumulator := collector.Accumulator()

@@ -1,0 +1,19 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+import (
+	"slices"
+	"testing"
+)
+
+func TestCollectors_ToSliceCollector(t *testing.T) {
+	defer trace("TestCollectors_ToSliceCollector")()
+
+	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+
+	result := CollectByCollector(Of(data...), ToSliceCollector[int]())
+	if !slices.Equal(result, data) {
+		t.Errorf("result is %v, want %v", result, data)
+	}
+}

@@ -39,6 +39,7 @@ parameter is a `Stream`:
 - `Sorted`
 - `Reduce`
 - `Collect`
+- `CollectByCollector`
 - `Empty`
 - `Iterate`
 - `IteratN`
