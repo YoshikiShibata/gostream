@@ -5,7 +5,7 @@ package gostream
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"testing"
@@ -21,21 +21,13 @@ func trace(name string) func() {
 func TestStream_MapFunc(t *testing.T) {
 	defer trace("TestStream_MapFunc")()
 
-	s := Of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+	s := Of(1, 3, 5, 7, 9)
 
-	s = s.Filter(func(t int) bool {
-		return t&1 != 0
-	})
-
-	var results []string
-	Map(s, strconv.Itoa).
-		ForEach(func(t string) {
-			results = append(results, t)
-		})
+	result := Map(s, strconv.Itoa).ToSlice()
 
 	want := []string{"1", "3", "5", "7", "9"}
-	if !reflect.DeepEqual(results, want) {
-		t.Errorf("results is %v, want %v", results, want)
+	if !slices.Equal(result, want) {
+		t.Errorf("result is %v, want %v", result, want)
 	}
 }
 
@@ -45,18 +37,11 @@ func TestStream_DistinctFunc(t *testing.T) {
 	s := Of(1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
 		6, 6, 7, 7, 8, 8, 9, 9, 10, 10)
 
-	s = Distinct(s).Filter(func(t int) bool {
-		return t&1 != 0
-	})
+	result := Distinct(s).ToSlice()
 
-	var results []string
-	Map(s, strconv.Itoa).
-		ForEach(func(t string) {
-			results = append(results, t)
-		})
-	want := []string{"1", "3", "5", "7", "9"}
-	if !reflect.DeepEqual(results, want) {
-		t.Errorf("results is %v, want %v", results, want)
+	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	if !slices.Equal(result, want) {
+		t.Errorf("result is %v, want %v", result, want)
 	}
 }
 
@@ -65,14 +50,11 @@ func TestStream_SortedFunc(t *testing.T) {
 
 	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 
-	s = Sorted(s)
+	result := Sorted(s).ToSlice()
 
-	sorted := []int{}
-	s.ForEach(func(t int) {
-		sorted = append(sorted, t)
-	})
-	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
-		t.Errorf("sorted is not sorted: %v", sorted)
+	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	if !slices.Equal(result, want) {
+		t.Errorf("result is %v, want %v", result, want)
 	}
 }
 
@@ -176,7 +158,7 @@ func TestStream_CollectFunc(t *testing.T) {
 			return (*result)[i] < (*result)[j]
 		})
 
-		if !reflect.DeepEqual(*result, data) {
+		if !slices.Equal(*result, data) {
 			t.Errorf("*result is  %v\n, want %v", *result, data)
 		}
 	})

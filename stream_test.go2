@@ -4,6 +4,7 @@ package gostream
 
 import (
 	"reflect"
+	"slices"
 	"strconv"
 	"sync"
 	"testing"
@@ -26,15 +27,12 @@ func TestStream_ForEach(t *testing.T) {
 		},
 	} {
 		stream := Of(tc.input...)
-		result := []int{}
 
-		stream.Filter(func(t int) bool {
+		result := stream.Filter(func(t int) bool {
 			return t&1 == 1
-		}).ForEach(func(t int) {
-			result = append(result, t)
-		})
+		}).ToSlice()
 
-		if !reflect.DeepEqual(result, tc.want) {
+		if !slices.Equal(result, tc.want) {
 			t.Errorf("result is %v, want %v", result, tc.want)
 		}
 	}
@@ -57,17 +55,14 @@ func TestStream_Filter(t *testing.T) {
 		},
 	} {
 		stream := Of(tc.input...)
-		result := []int{}
 
-		stream.Filter(func(t int) bool {
+		result := stream.Filter(func(t int) bool {
 			return t&1 == 1
 		}).Filter(func(t int) bool {
 			return true
-		}).ForEach(func(t int) {
-			result = append(result, t)
-		})
+		}).ToSlice()
 
-		if !reflect.DeepEqual(result, tc.want) {
+		if !slices.Equal(result, tc.want) {
 			t.Errorf("result is %v, want %v", result, tc.want)
 		}
 	}
@@ -90,17 +85,13 @@ func TestStream_Map(t *testing.T) {
 		},
 	} {
 		stream := Of(tc.input...)
-		result := []string{}
 
 		newStream := stream.Filter(func(t int) bool {
 			return t&1 == 1
 		})
-		Map(newStream, strconv.Itoa).
-			ForEach(func(t string) {
-				result = append(result, t)
-			})
+		result := Map(newStream, strconv.Itoa).ToSlice()
 
-		if !reflect.DeepEqual(result, tc.want) {
+		if !slices.Equal(result, tc.want) {
 			t.Errorf("result is %v, want %v", result, tc.want)
 		}
 	}
@@ -124,17 +115,14 @@ func TestStream_Distinct(t *testing.T) {
 		},
 	} {
 		stream := Of(tc.input...)
-		result := []int{}
 
 		// Filter returns a genericStream
 		newStream := stream.Filter(func(t int) bool {
 			return true
 		})
-		Distinct(newStream).ForEach(func(t int) {
-			result = append(result, t)
-		})
+		result := Distinct(newStream).ToSlice()
 
-		if !reflect.DeepEqual(result, tc.want) {
+		if !slices.Equal(result, tc.want) {
 			t.Errorf("result is %v, want %v", result, tc.want)
 		}
 	}
@@ -148,14 +136,13 @@ func TestStream_Sorted(t *testing.T) {
 		return true
 	})
 
-	sorted := []int{}
-	s.Sorted(func(t1, t2 int) bool {
+	result := s.Sorted(func(t1, t2 int) bool {
 		return t1 < t2
-	}).ForEach(func(t int) {
-		sorted = append(sorted, t)
-	})
-	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
-		t.Errorf("sorted is not sorted: %v", sorted)
+	}).ToSlice()
+
+	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	if !slices.Equal(result, want) {
+		t.Errorf("result is %v, want %v", result, want)
 	}
 }
 
@@ -175,19 +162,17 @@ func TestStream_Peek(t *testing.T) {
 		lock.Unlock()
 	}
 
-	sorted := []int{}
-	s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
+	result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
 		return t1 < t2
-	}).ForEach(func(t int) {
-		sorted = append(sorted, t)
-	})
-	if !reflect.DeepEqual(sorted, []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}) {
-		t.Errorf("sorted is not sorted: %v", sorted)
+	}).ToSlice()
+	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	if !slices.Equal(result, want) {
+		t.Errorf("result is %v, want %v", result, want)
 	}
 
 	lock.Lock()
 	wantPeeked := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	if !reflect.DeepEqual(peeked, wantPeeked) {
+	if !slices.Equal(peeked, wantPeeked) {
 		t.Errorf("peeked is %v, want %v", peeked, wantPeeked)
 	}
 	lock.Unlock()
@@ -201,16 +186,13 @@ func TestStream_Limit(t *testing.T) {
 		return true
 	})
 
-	sorted := []int{}
-	s.Limit(5).
+	sorted := s.Limit(5).
 		Sorted(func(t1, t2 int) bool {
 			return t1 < t2
-		}).
-		ForEach(func(t int) {
-			sorted = append(sorted, t)
-		})
+		}).ToSlice()
+
 	want := []int{6, 7, 8, 9, 10}
-	if !reflect.DeepEqual(sorted, want) {
+	if !slices.Equal(sorted, want) {
 		t.Errorf("sorted is %v, want %v", sorted, want)
 	}
 }
@@ -226,16 +208,13 @@ func TestStream_Skip(t *testing.T) {
 			return true
 		})
 
-		sorted := []int{}
-		s.Skip(0).Limit(5).
+		sorted := s.Skip(0).Limit(5).
 			Sorted(func(t1, t2 int) bool {
 				return t1 < t2
-			}).
-			ForEach(func(t int) {
-				sorted = append(sorted, t)
-			})
+			}).ToSlice()
+
 		want := []int{6, 7, 8, 9, 10}
-		if !reflect.DeepEqual(sorted, want) {
+		if !slices.Equal(sorted, want) {
 			t.Errorf("sorted is %v, want %v", sorted, want)
 		}
 	})
@@ -248,16 +227,13 @@ func TestStream_Skip(t *testing.T) {
 			return true
 		})
 
-		sorted := []int{}
-		s.Skip(5).Limit(5).
+		sorted := s.Skip(5).Limit(5).
 			Sorted(func(t1, t2 int) bool {
 				return t1 < t2
-			}).
-			ForEach(func(t int) {
-				sorted = append(sorted, t)
-			})
+			}).ToSlice()
+
 		want := []int{1, 2, 3, 4, 5}
-		if !reflect.DeepEqual(sorted, want) {
+		if !slices.Equal(sorted, want) {
 			t.Errorf("sorted is %v, want %v", sorted, want)
 		}
 	})
