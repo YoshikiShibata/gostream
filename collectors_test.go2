@@ -3,7 +3,9 @@
 package gostream
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -15,5 +17,35 @@ func TestCollectors_ToSliceCollector(t *testing.T) {
 	result := CollectByCollector(Of(data...), ToSliceCollector[int]())
 	if !slices.Equal(result, data) {
 		t.Errorf("result is %v, want %v", result, data)
+	}
+}
+
+func TestCollectors_ToSetCollector(t *testing.T) {
+	defer trace("TestCollectors_ToSetCollector")()
+
+	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+		1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+		1, 3, 5, 7, 9, 10, 10, 10, 10,
+		9, 9, 9, 9, 9, 1, 1, 1, 1, 1}
+
+	result := CollectByCollector(Of(data...), ToSetCollector[int]())
+	if len(result) != 10 {
+		t.Errorf("len(result) is %d, want 10", len(result))
+	}
+	want := "map[1:true 2:true 3:true 4:true 5:true 6:true 7:true 8:true 9:true 10:true]"
+	resultStr := fmt.Sprintf("%v", result)
+	if resultStr != want {
+		t.Errorf("resultStr is %q, but want %q", resultStr, want)
+	}
+}
+
+func TestCollectors_JoiningCollector(t *testing.T) {
+	defer trace("TestCollectors_JoinigCollector")()
+
+	data := []string{"hello", "world", "こんにちは", "世界"}
+	result := CollectByCollector(Of(data...), JoiningCollector(" "))
+	want := strings.Join(data, " ")
+	if result != want {
+		t.Errorf("result is %q, want %q", result, want)
 	}
 }

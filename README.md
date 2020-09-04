@@ -45,3 +45,9 @@ parameter is a `Stream`:
 - `IteratN`
 - `Generate`
 - `Concat`
+
+For `CollectByCollector` function, following functions as a `Collector` are provided:
+
+- `ToSliceCollector`
+- `ToSetCollector`
+- `JoiningCollector`

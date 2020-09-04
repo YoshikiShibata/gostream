@@ -2,6 +2,10 @@
 
 package gostream
 
+import (
+	"strings"
+)
+
 // ToSliceCollector returns a Collector for T.
 // Probably we don't need this function because there is ToSlice() method.
 func ToSliceCollector[T any]() *Collector[T, *[]T, []T] {
@@ -19,6 +23,49 @@ func ToSliceCollector[T any]() *Collector[T, *[]T, []T] {
 		},
 		finisher: func(t *[]T) []T {
 			return *t
+		},
+	}
+}
+
+// ToSetCollector returns a Collector that accumulates the input elements
+// into a new map[T]bool.
+func ToSetCollector[T comparable]() *Collector[T, map[T]bool, map[T]bool] {
+	return &Collector[T, map[T]bool, map[T]bool]{
+		supplier: func() map[T]bool {
+			return make(map[T]bool)
+		},
+		accumulator: func(m map[T]bool, k T) {
+			m[k] = true
+		},
+		combiner: func(left, right map[T]bool) map[T]bool {
+			for k := range right {
+				left[k] = true
+			}
+			return left
+		},
+		finisher: func(t map[T]bool) map[T]bool {
+			return t
+		},
+	}
+}
+
+// JoiningCollector returns a Collector that concatenates the input elements
+// into a string, in encounter order.
+func JoiningCollector(sep string) *Collector[string, *[]string, string] {
+	return &Collector[string, *[]string, string]{
+		supplier: func() *[]string {
+			var s []string
+			return &s
+		},
+		accumulator: func(b *[]string, s string) {
+			*b = append(*b, s)
+		},
+		combiner: func(left, right *[]string) *[]string {
+			*left = append(*left, *right...)
+			return left
+		},
+		finisher: func(b *[]string) string {
+			return strings.Join(*b, sep)
 		},
 	}
 }
