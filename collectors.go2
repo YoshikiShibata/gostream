@@ -129,3 +129,32 @@ func FilteringCollector[T, A, R any](
 		finisher: downstream.Finisher(),
 	}
 }
+
+// GroupingByCollector returns a Collector implementing a cascaded "group by"
+// opertion on input elements of type T, grouping elements according to a
+// classifier function, and then performing a reduction operation on the values
+// associated with a give key using the specified downstream Collector.
+/* TODO
+func GroupingByCollector[T any, K comparable, D, A any](
+	classifier Function[T, K],
+	downstream Collector[T, A, D]) *Collector[T, A, map[K]D] {
+
+	downstreamSupplier := downstream.Supplier()
+	downstreamAccumulator := downstream.Accumulator()
+
+	return &Collector[T, A, map[K]D]{
+		supplier: make(map[K]D),
+		accumulator: func(m map[K]A, t T) {
+			key := classifer(t)
+			a, ok := m[key]
+			if !ok {
+				a := downstreamSupplier()
+				m[key] = a
+			}
+			downstreamAccumulator(a, t)
+		},
+		combiner: downstream.Combiner(),
+		finisher: downstream.Finisher(),
+	}
+}
+*/
