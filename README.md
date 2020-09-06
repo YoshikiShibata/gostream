@@ -53,3 +53,4 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `JoiningCollector`
 - `MappingCollector`
 - `FlatMappingCollector`
+- `FilteringCollector`

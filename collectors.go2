@@ -109,3 +109,23 @@ func FlatMappingCollector[T, U, A, R any](
 		finisher: downstream.Finisher(),
 	}
 }
+
+// FilteringCollector adapts a Collector to one accepting elements of the same
+// type T by applying the predicate to each input element and only accumulating
+// if the predicate returns true
+func FilteringCollector[T, A, R any](
+	predicate Predicate[T],
+	downstream *Collector[T, A, R]) *Collector[T, A, R] {
+	downstreamAccumulator := downstream.Accumulator()
+
+	return &Collector[T, A, R]{
+		supplier: downstream.Supplier(),
+		accumulator: func(r A, t T) {
+			if predicate(t) {
+				downstreamAccumulator(r, t)
+			}
+		},
+		combiner: downstream.Combiner(),
+		finisher: downstream.Finisher(),
+	}
+}
