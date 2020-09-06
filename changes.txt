@@ -1,3 +1,5 @@
+2020/09/06 FlatMappingCollector() function is implemented.
+2020/09/06 MappingCollector() function is implemented.
 2020/09/05 JoiningCollector() function is implemented.
 2020/09/04 ToSliceCollector() function is implemented.
 2020/09/03 CollectByCollector is implemented, but there is no test code yet.

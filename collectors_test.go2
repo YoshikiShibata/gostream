@@ -5,6 +5,7 @@ package gostream
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -45,6 +46,57 @@ func TestCollectors_JoiningCollector(t *testing.T) {
 	data := []string{"hello", "world", "こんにちは", "世界"}
 	result := CollectByCollector(Of(data...), JoiningCollector(" "))
 	want := strings.Join(data, " ")
+	if result != want {
+		t.Errorf("result is %q, want %q", result, want)
+	}
+}
+
+func TestCollectors_MappingCollector(t *testing.T) {
+	defer trace("TestCollectors_MappingCollector")()
+
+	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	result := CollectByCollector(Of(data...),
+		MappingCollector(
+			func(t int) string {
+				return strconv.Itoa(t)
+			},
+			JoiningCollector(" ")))
+
+	want := CollectByCollector(
+		Map(Of(data...),
+			func(t int) string {
+				return strconv.Itoa(t)
+			}),
+		JoiningCollector(" "))
+
+	if result != want {
+		t.Errorf("result is %q, want %q", result, want)
+	}
+}
+
+func TestCollectors_FlatMappingCollector(t *testing.T) {
+	defer trace("TestCollectors_FlatMappingCollector")()
+
+	data := []int{0, 10, 20}
+	result := CollectByCollector(
+		Of(data...),
+		FlatMappingCollector(
+			func(t int) Stream[string] {
+				return Map(
+					Iterate(t, func(v int) int { return v + 1 }).Limit(10),
+					func(v int) string { return strconv.Itoa(v) },
+				)
+			},
+			JoiningCollector(" "),
+		),
+	)
+
+	var data2 []string
+	for i := 0; i < 30; i++ {
+		data2 = append(data2, strconv.Itoa(i))
+	}
+	want := strings.Join(data2, " ")
+
 	if result != want {
 		t.Errorf("result is %q, want %q", result, want)
 	}

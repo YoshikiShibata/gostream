@@ -69,3 +69,43 @@ func JoiningCollector(sep string) *Collector[string, *[]string, string] {
 		},
 	}
 }
+
+// MappingCollector adapts a Collector accepting elements of type U
+// to one accepting elements of type T by appling a mapping function
+// to each input element before accumulation.
+func MappingCollector[T, U, A, R any](
+	mapper Function[T, U],
+	downstream *Collector[U, A, R]) *Collector[T, A, R] {
+	downstreamAccumulator := downstream.Accumulator()
+
+	return &Collector[T, A, R]{
+		supplier: downstream.Supplier(),
+		accumulator: func(r A, t T) {
+			downstreamAccumulator(r, mapper(t))
+		},
+		combiner: downstream.Combiner(),
+		finisher: downstream.Finisher(),
+	}
+}
+
+// FlatMappingCollector adapts Collector accepting elements of type U to one
+// accepting elements of type T by applying a flat mapping function to each
+// input element before accumulation. The flat mapping function maps an input
+// elements to a Stream covering zero or more output elements that are then
+// accumulated downstream.
+func FlatMappingCollector[T, U, A, R any](
+	mapper Function[T, Stream[U]],
+	downstream *Collector[U, A, R]) *Collector[T, A, R] {
+	downstreamAccumulator := downstream.Accumulator()
+
+	return &Collector[T, A, R]{
+		supplier: downstream.Supplier(),
+		accumulator: func(r A, t T) {
+			mapper(t).ForEach(func(u U) {
+				downstreamAccumulator(r, u)
+			})
+		},
+		combiner: downstream.Combiner(),
+		finisher: downstream.Finisher(),
+	}
+}

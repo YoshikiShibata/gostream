@@ -51,3 +51,5 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `ToSliceCollector`
 - `ToSetCollector`
 - `JoiningCollector`
+- `MappingCollector`
+- `FlatMappingCollector`
