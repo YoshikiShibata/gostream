@@ -135,17 +135,19 @@ func FilteringCollector[T, A, R any](
 // classifier function, and then performing a reduction operation on the values
 // associated with a give key using the specified downstream Collector.
 /* TODO
-func GroupingByCollector[T any, K comparable, D, A any](
+func GroupingByCollector[T any, K comparable, A any](
 	classifier Function[T, K],
-	downstream Collector[T, A, D]) *Collector[T, A, map[K]D] {
+	downstream *Collector[T, A, A]) *Collector[T, map[K]A, map[K]A] {
 
 	downstreamSupplier := downstream.Supplier()
 	downstreamAccumulator := downstream.Accumulator()
 
-	return &Collector[T, A, map[K]D]{
-		supplier: make(map[K]D),
+	return &Collector[T, map[K]A, map[K]A]{
+		supplier: func() map[K]A {
+			return make(map[K]A)
+		},
 		accumulator: func(m map[K]A, t T) {
-			key := classifer(t)
+			key := classifier(t)
 			a, ok := m[key]
 			if !ok {
 				a := downstreamSupplier()
@@ -153,8 +155,19 @@ func GroupingByCollector[T any, K comparable, D, A any](
 			}
 			downstreamAccumulator(a, t)
 		},
-		combiner: downstream.Combiner(),
-		finisher: downstream.Finisher(),
+		combiner: func(m1, m2 map[K]A) map[K]A {
+			for k, a := range m2 {
+				_, ok := m1[k]
+				if ok {
+					a = downstream.Combiner()(m1[k], a)
+				}
+				m1[k] = a
+			}
+			return m1
+		},
+		finisher: func(a map[K]A) map[K]A {
+			return a
+		},
 	}
 }
 */

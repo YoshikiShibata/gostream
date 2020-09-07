@@ -116,3 +116,25 @@ func TestCollectors_FilteringCollector(t *testing.T) {
 		t.Errorf("result is %v, want %v", result, want)
 	}
 }
+
+/*
+func TestCollectors_GroupingByCollector(t *testing.T) {
+	defer trace("TestCollectors_GroupingByCollector")()
+
+	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+
+	result := CollectByCollector(
+		Of(data...),
+		GroupingByCollector(
+			func(t int) string {
+				if t&1 == 0 {
+					return "even"
+				}
+				return "odd"
+			},
+			ToSetCollector[int]()),
+	)
+
+	fmt.Printf("result : %v\n", result)
+}
+*/
