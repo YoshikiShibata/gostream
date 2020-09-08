@@ -129,6 +129,20 @@ func FilteringCollector[T, A, R any](
 	}
 }
 
+// GroupingByToSliceCollector returns a Collector implementing a "group by"
+// operation on input elements of type T, grouping elements according to a
+// classification function, and returning the results in a map.
+//
+// The classification function maps elements to some key type K.
+// The collector produces a map[K][]T whoses keys are value resulting from
+// applying the classification function to the input elements which map to
+// the associated key under the classification function.
+func GroupingByToSliceCollector[T any, K comparable](
+	classifer Function[T, K],
+) *Collector[T, map[K]*[]T, map[K][]T] {
+	return GroupingByCollector(classifer, ToSliceCollector[T]())
+}
+
 // GroupingByCollector returns a Collector implementing a cascaded "group by"
 // opertion on input elements of type T, grouping elements according to a
 // classifier function, and then performing a reduction operation on the values

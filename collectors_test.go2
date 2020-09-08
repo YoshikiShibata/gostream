@@ -117,6 +117,28 @@ func TestCollectors_FilteringCollector(t *testing.T) {
 	}
 }
 
+func TestCollectors_GroupingByToSliceCollector(t *testing.T) {
+	defer trace("TestCollectors_GroupingByToSliceCollector")()
+
+	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	result := CollectByCollector(
+		Of(data...),
+		GroupingByToSliceCollector(
+			func(t int) string {
+				if t&1 == 0 {
+					return "even"
+				}
+				return "odd"
+			},
+		),
+	)
+	want := "map[even:[2 4 6 8 10] odd:[1 3 5 7 9]]"
+	resultStr := fmt.Sprintf("%v", result)
+	if resultStr != want {
+		t.Errorf("resultStr is %q, but want %q", resultStr, want)
+	}
+}
+
 func TestCollectors_GroupingByCollector(t *testing.T) {
 	defer trace("TestCollectors_GroupingByCollector")()
 

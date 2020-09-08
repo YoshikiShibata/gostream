@@ -7,6 +7,7 @@ if [ $? != 0 ]; then
 	exit 1
 fi
 
+
 go tool go2go test 
 
 rm *.go
