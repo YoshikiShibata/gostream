@@ -7,7 +7,6 @@ import (
 )
 
 // ToSliceCollector returns a Collector for T.
-// Probably we don't need this function because there is ToSlice() method.
 func ToSliceCollector[T any]() *Collector[T, *[]T, []T] {
 	return &Collector[T, *[]T, []T]{
 		supplier: func() *[]T {
@@ -134,15 +133,14 @@ func FilteringCollector[T, A, R any](
 // opertion on input elements of type T, grouping elements according to a
 // classifier function, and then performing a reduction operation on the values
 // associated with a give key using the specified downstream Collector.
-/* TODO
-func GroupingByCollector[T any, K comparable, A any](
+func GroupingByCollector[T any, K comparable, A, D any](
 	classifier Function[T, K],
-	downstream *Collector[T, A, A]) *Collector[T, map[K]A, map[K]A] {
+	downstream *Collector[T, A, D]) *Collector[T, map[K]A, map[K]D] {
 
 	downstreamSupplier := downstream.Supplier()
 	downstreamAccumulator := downstream.Accumulator()
 
-	return &Collector[T, map[K]A, map[K]A]{
+	return &Collector[T, map[K]A, map[K]D]{
 		supplier: func() map[K]A {
 			return make(map[K]A)
 		},
@@ -150,7 +148,7 @@ func GroupingByCollector[T any, K comparable, A any](
 			key := classifier(t)
 			a, ok := m[key]
 			if !ok {
-				a := downstreamSupplier()
+				a = downstreamSupplier()
 				m[key] = a
 			}
 			downstreamAccumulator(a, t)
@@ -165,9 +163,12 @@ func GroupingByCollector[T any, K comparable, A any](
 			}
 			return m1
 		},
-		finisher: func(a map[K]A) map[K]A {
-			return a
+		finisher: func(a map[K]A) map[K]D {
+			result := make(map[K]D)
+			for k, v := range a {
+				result[k] = downstream.Finisher()(v)
+			}
+			return result
 		},
 	}
 }
-*/
