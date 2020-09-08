@@ -186,3 +186,43 @@ func GroupingByCollector[T any, K comparable, A, D any](
 		},
 	}
 }
+
+// PartitioningByCollector returs a Collector which partitions the input
+// elements according to a Predicate, reduces the values in each partition
+// according to antoher Collector, and organizes them into map[bool]D whose
+// values are the result of the downstream reducation.
+func PartitioningByCollector[T, D, A any](
+	predicate Predicate[T],
+	downstream *Collector[T, A, D],
+) *Collector[T, *[2]A, map[bool]D] {
+	downstreamAccumulator := downstream.Accumulator()
+
+	return &Collector[T, *[2]A, map[bool]D]{
+		supplier: func() *[2]A {
+			var partition [2]A
+			partition[0] = downstream.Supplier()()
+			partition[1] = downstream.Supplier()()
+			return &partition
+		},
+		accumulator: func(partition *[2]A, t T) {
+			if predicate(t) {
+				downstreamAccumulator((*partition)[1], t) // true
+			} else {
+				downstreamAccumulator((*partition)[0], t) // false
+			}
+		},
+		combiner: func(p1, p2 *[2]A) *[2]A {
+			var partition [2]A
+
+			partition[0] = downstream.Combiner()((*p1)[0], (*p2)[0])
+			partition[1] = downstream.Combiner()((*p1)[1], (*p2)[1])
+			return &partition
+		},
+		finisher: func(partition *[2]A) map[bool]D {
+			result := make(map[bool]D)
+			result[false] = downstream.Finisher()((*partition)[0])
+			result[true] = downstream.Finisher()((*partition)[1])
+			return result
+		},
+	}
+}
