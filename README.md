@@ -56,4 +56,5 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `FilteringCollector`
 - `GroupingByCollector`
 - `GroupingByToSliceCollector`
+- `PartitioningByToSliceCollector`
 - `PartitioningByCollector`

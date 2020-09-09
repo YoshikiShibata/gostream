@@ -3,6 +3,7 @@
 package gostream
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -187,6 +188,15 @@ func GroupingByCollector[T any, K comparable, A, D any](
 	}
 }
 
+// PartitioningByToSliceCollector returns a Collector which partitions the
+// input elements according to a Predicated, and organizes them into
+// a map[bool][]T.
+func PartitioningByToSliceCollector[T any](
+	predicate Predicate[T],
+) *Collector[T, *[2]*[]T, map[bool][]T] {
+	return PartitioningByCollector(predicate, ToSliceCollector[T]())
+}
+
 // PartitioningByCollector returs a Collector which partitions the input
 // elements according to a Predicate, reduces the values in each partition
 // according to antoher Collector, and organizes them into map[bool]D whose
@@ -197,6 +207,7 @@ func PartitioningByCollector[T, D, A any](
 ) *Collector[T, *[2]A, map[bool]D] {
 	downstreamAccumulator := downstream.Accumulator()
 
+	fmt.Printf("downstream : %T\n", downstream)
 	return &Collector[T, *[2]A, map[bool]D]{
 		supplier: func() *[2]A {
 			var partition [2]A
