@@ -3,6 +3,7 @@
 package gostream
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -232,6 +233,44 @@ func PartitioningByCollector[T, D, A any](
 			result[false] = downstream.Finisher()((*partition)[0])
 			result[true] = downstream.Finisher()((*partition)[1])
 			return result
+		},
+	}
+}
+
+// ToUniqueKeysMapCollector returns a Collector that accumulate elements into
+// a map[K]U whose keys and values are the result of applying the provided
+// mapping functions to the input elements.
+//
+// If the mapped keys contains duplicates, this function panics.
+func ToUniqueKeysMapCollector[T any, K comparable, U any](
+	keyMapper Function[T, K],
+	valueMapper Function[T, U],
+) *Collector[T, map[K]U, map[K]U] {
+	return &Collector[T, map[K]U, map[K]U]{
+		supplier: func() map[K]U {
+			return make(map[K]U)
+		},
+		accumulator: func(m map[K]U, t T) {
+			key := keyMapper(t)
+			value := valueMapper(t)
+
+			if _, ok := m[key]; ok {
+				panic(fmt.Sprintf("duplicated key: %v", key))
+			}
+			m[key] = value
+		},
+		combiner: func(m1, m2 map[K]U) map[K]U {
+			for key, v2 := range m2 {
+				if _, ok := m1[key]; ok {
+					panic(fmt.Sprintf("duplicated key: %v", key))
+				}
+
+				m1[key] = v2
+			}
+			return m1
+		},
+		finisher: func(m map[K]U) map[K]U {
+			return m
 		},
 	}
 }
