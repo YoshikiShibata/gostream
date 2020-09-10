@@ -58,3 +58,4 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `GroupingByToSliceCollector`
 - `PartitioningByToSliceCollector`
 - `PartitioningByCollector`
+- `ToMapCollector`

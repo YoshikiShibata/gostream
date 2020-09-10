@@ -3,7 +3,6 @@
 package gostream
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -207,7 +206,6 @@ func PartitioningByCollector[T, D, A any](
 ) *Collector[T, *[2]A, map[bool]D] {
 	downstreamAccumulator := downstream.Accumulator()
 
-	fmt.Printf("downstream : %T\n", downstream)
 	return &Collector[T, *[2]A, map[bool]D]{
 		supplier: func() *[2]A {
 			var partition [2]A
@@ -234,6 +232,52 @@ func PartitioningByCollector[T, D, A any](
 			result[false] = downstream.Finisher()((*partition)[0])
 			result[true] = downstream.Finisher()((*partition)[1])
 			return result
+		},
+	}
+}
+
+// ToMapCollector returns a Collector that accumulates elements into a map[K]U
+// whose keys and values are the result of applying the provided mapping
+// functions to the input elements.
+//
+// If mapped keys contains duplicates, the value mapping function is applied
+// to each equal element, and the results are merged using the provided
+// merging function.
+func ToMapCollector[T any, K comparable, U any](
+	keyMapper Function[T, K],
+	valueMapper Function[T, U],
+	mergeFunction BinaryOperator[U],
+) *Collector[T, map[K]U, map[K]U] {
+	return &Collector[T, map[K]U, map[K]U]{
+		supplier: func() map[K]U {
+			return make(map[K]U)
+		},
+		accumulator: func(m map[K]U, t T) {
+			key := keyMapper(t)
+			value := valueMapper(t)
+
+			v, ok := m[key]
+			if ok {
+				value = mergeFunction(v, value)
+			}
+			m[key] = value
+		},
+		combiner: func(m1, m2 map[K]U) map[K]U {
+			for key, v2 := range m2 {
+				var value U
+
+				v1, ok := m1[key]
+				if ok {
+					value = mergeFunction(v1, v2)
+				} else {
+					value = v2
+				}
+				m1[key] = value
+			}
+			return m1
+		},
+		finisher: func(m map[K]U) map[K]U {
+			return m
 		},
 	}
 }
