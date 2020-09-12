@@ -4,6 +4,7 @@ package gostream
 
 import (
 	"fmt"
+	"runtime"
 	"sort"
 	"sync"
 )
@@ -26,6 +27,7 @@ type genericStream[T any] struct {
 
 func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 	return &genericStream[T]{
+		parallel: gs.parallel,
 		prevReq:  gs.nextReq,
 		prevData: gs.nextData,
 		nextReq:  make(chan struct{}),
@@ -73,6 +75,21 @@ func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 	gs.nextReq <- struct{}{}
 	for od := range gs.nextData {
 		op(od.data)
+		gs.nextReq <- struct{}{}
+	}
+	gs.lock.Lock()
+	if !gs.closed {
+		close(gs.nextReq)
+		gs.closed = true
+	}
+	gs.lock.Unlock()
+}
+
+func (gs *genericStream[T]) terminalOpOrderedData(
+	op Consumer[orderedData[T]]) {
+	gs.nextReq <- struct{}{}
+	for od := range gs.nextData {
+		op(od)
 		gs.nextReq <- struct{}{}
 	}
 	close(gs.nextReq)
@@ -157,7 +174,22 @@ func (gs *genericStream[T]) Close() {
 func (gs *genericStream[T]) ForEach(action Consumer[T]) {
 	gs.validateState()
 
-	gs.terminalOp(action)
+	if !gs.parallel {
+		gs.terminalOp(action)
+		return
+	}
+
+	maxprocs := runtime.GOMAXPROCS(-1)
+	var wg sync.WaitGroup
+
+	for i := 0; i < (maxprocs + 1); i++ {
+		wg.Add(1)
+		go func() {
+			gs.terminalOp(action)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 }
 
 func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
@@ -268,11 +300,30 @@ func (gs *genericStream[T]) skip(n int) {
 func (gs *genericStream[T]) ToSlice() []T {
 	gs.validateState()
 
-	var result []T
+	if !gs.parallel {
+		var result []T
+		gs.terminalOp(func(t T) {
+			result = append(result, t)
+		})
+		return result
+	}
 
-	gs.terminalOp(func(t T) {
-		result = append(result, t)
+	// parallel
+
+	var ods []orderedData[T]
+
+	gs.terminalOpOrderedData(func(od orderedData[T]) {
+		ods = append(ods, od)
 	})
+
+	sort.Slice(ods, func(i, j int) bool {
+		return ods[i].order < ods[j].order
+	})
+
+	result := make([]T, len(ods))
+	for i := 0; i < len(ods); i++ {
+		result[i] = ods[i].data
+	}
 
 	return result
 }

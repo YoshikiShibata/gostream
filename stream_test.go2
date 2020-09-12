@@ -3,6 +3,7 @@
 package gostream
 
 import (
+	"fmt"
 	"reflect"
 	"slices"
 	"strconv"
@@ -13,29 +14,27 @@ import (
 func TestStream_ForEach(t *testing.T) {
 	defer trace("TestStream_ForEach")()
 
-	for _, tc := range [...]struct {
-		input []int
-		want  []int
-	}{
-		{
-			input: []int{},
-			want:  []int{},
-		},
-		{
-			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-			want:  []int{1, 3, 5, 7, 9},
-		},
-	} {
-		stream := Of(tc.input...)
+	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
-		result := stream.Filter(func(t int) bool {
-			return t&1 == 1
-		}).ToSlice()
+	t.Run("serial", func(t *testing.T) {
+		defer trace("TestStream_ForEach/serial")()
 
-		if !slices.Equal(result, tc.want) {
-			t.Errorf("result is %v, want %v", result, tc.want)
-		}
-	}
+		want := 1
+		Of(data...).ForEach(func(v int) {
+			if v != want {
+				t.Fatalf("t is %d, want %d", v, want)
+			}
+			want++
+		})
+	})
+
+	t.Run("parallel", func(t *testing.T) {
+		defer trace("TestStream_ForEach/parallel")()
+
+		Of(data...).Parallel().ForEach(func(v int) {
+			fmt.Printf("v is %v\n", v)
+		})
+	})
 }
 
 func TestStream_Filter(t *testing.T) {
