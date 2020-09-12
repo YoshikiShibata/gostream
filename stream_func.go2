@@ -15,12 +15,12 @@ func Map[T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 	gs.validateState()
 
 	nextReq := make(chan struct{})
-	nextData := make(chan R)
+	nextData := make(chan orderedData[R])
 
 	go func() {
 		for range nextReq {
 			gs.nextReq <- struct{}{}
-			t, ok := <-gs.nextData
+			od, ok := <-gs.nextData
 			if !ok {
 				close(nextData)
 				close(gs.nextReq)
@@ -30,8 +30,11 @@ func Map[T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 				}()
 				return
 			}
-			r := mapper(t)
-			nextData <- r
+			r := mapper(od.data)
+			nextData <- orderedData[R]{
+				order: od.order,
+				data:  r,
+			}
 		}
 	}()
 
@@ -52,7 +55,7 @@ func FlatMap[T, R any](
 	gs.validateState()
 
 	nextReq := make(chan struct{})
-	nextData := make(chan R)
+	nextData := make(chan orderedData[R])
 
 	var rgs *genericStream[R]
 
@@ -61,7 +64,7 @@ func FlatMap[T, R any](
 			for {
 				if rgs == nil {
 					gs.nextReq <- struct{}{}
-					t, ok := <-gs.nextData
+					od, ok := <-gs.nextData
 					if !ok {
 						close(nextData)
 						close(gs.nextReq)
@@ -72,7 +75,7 @@ func FlatMap[T, R any](
 						return
 					}
 
-					r := mapper(t)
+					r := mapper(od.data)
 					rgs = r.(*genericStream[R])
 				}
 
@@ -99,7 +102,7 @@ func FlatMap[T, R any](
 // values.
 func Of[T any](data ...T) Stream[T] {
 	nextReq := make(chan struct{})
-	nextData := make(chan T)
+	nextData := make(chan orderedData[T])
 
 	go func() {
 		i := 0
@@ -113,7 +116,10 @@ func Of[T any](data ...T) Stream[T] {
 				return
 			}
 			if i < len(data) {
-				nextData <- data[i]
+				nextData <- orderedData[T]{
+					order: uint64(i),
+					data:  data[i],
+				}
 				i++
 			}
 		}
@@ -136,28 +142,28 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 		prevReq:  s.nextReq,
 		prevData: s.nextData,
 		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		nextData: make(chan orderedData[T]),
 	}
 
 	go func() {
 		seen := make(map[T]bool)
 
 		for range gs.nextReq {
-			data, ok := gs.getPrevData()
+			od, ok := gs.getPrevData()
 			if !ok {
 				gs.close()
 				return
 			}
 
-			for seen[data] {
-				data, ok = gs.getPrevData()
+			for seen[od.data] {
+				od, ok = gs.getPrevData()
 				if !ok {
 					gs.close()
 					return
 				}
 			}
-			gs.nextData <- data
-			seen[data] = true
+			gs.nextData <- od
+			seen[od.data] = true
 		}
 		gs.close()
 	}()
@@ -177,11 +183,11 @@ func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
 	var dataSlice []T
 	for {
 		prevReq <- struct{}{}
-		data, ok := <-prevData
+		od, ok := <-prevData
 		if !ok {
 			break
 		}
-		dataSlice = append(dataSlice, data)
+		dataSlice = append(dataSlice, od.data)
 	}
 	close(prevReq)
 
@@ -224,11 +230,11 @@ func Reduce[U, T any](
 			result := identity
 			for {
 				prevReq <- struct{}{}
-				data, ok := <-prevData
+				od, ok := <-prevData
 				if !ok {
 					break
 				}
-				result = accumulator(result, data)
+				result = accumulator(result, od.data)
 			}
 			results <- result
 		}()
@@ -279,11 +285,11 @@ func Collect[R, T any](
 			result := supplier()
 			for {
 				prevReq <- struct{}{}
-				data, ok := <-prevData
+				od, ok := <-prevData
 				if !ok {
 					break
 				}
-				accumulator(result, data)
+				accumulator(result, od.data)
 			}
 			results <- result
 		}()
@@ -324,7 +330,7 @@ func CollectByCollector[T, R, A any](
 func Empty[T any]() Stream[T] {
 	gs := &genericStream[T]{
 		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		nextData: make(chan orderedData[T]),
 	}
 
 	go func() {
@@ -343,21 +349,29 @@ func Empty[T any]() Stream[T] {
 func Iterate[T any](seed T, f UnaryOperator[T]) Stream[T] {
 	gs := &genericStream[T]{
 		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		nextData: make(chan orderedData[T]),
 	}
 
 	go func() {
 		useSeed := true
 		nextValue := seed
 
+		order := uint64(0)
 		for range gs.nextReq {
 			if useSeed {
-				gs.nextData <- seed
+				gs.nextData <- orderedData[T]{
+					order: order,
+					data:  seed,
+				}
 				useSeed = false
 			} else {
 				nextValue = f(nextValue)
-				gs.nextData <- nextValue
+				gs.nextData <- orderedData[T]{
+					order: order,
+					data:  nextValue,
+				}
 			}
+			order++
 		}
 		close(gs.nextData)
 	}()
@@ -376,13 +390,14 @@ func IterateN[T any](
 
 	gs := &genericStream[T]{
 		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		nextData: make(chan orderedData[T]),
 	}
 
 	go func() {
 		nextValue := seed
 		applyNext := false
 
+		order := uint64(0)
 		for range gs.nextReq {
 			if applyNext {
 				nextValue = next(nextValue)
@@ -392,7 +407,11 @@ func IterateN[T any](
 				break
 			}
 
-			gs.nextData <- nextValue
+			gs.nextData <- orderedData[T]{
+				order: order,
+				data:  nextValue,
+			}
+			order++
 			applyNext = true
 		}
 		close(gs.nextData)
@@ -407,12 +426,17 @@ func IterateN[T any](
 func Generate[T any](s Supplier[T]) Stream[T] {
 	gs := &genericStream[T]{
 		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		nextData: make(chan orderedData[T]),
 	}
 
 	go func() {
+		order := uint64(0)
 		for range gs.nextReq {
-			gs.nextData <- s()
+			gs.nextData <- orderedData[T]{
+				order: order,
+				data:  s(),
+			}
+			order++
 		}
 		close(gs.nextData)
 	}()
@@ -430,7 +454,7 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 
 	gs := &genericStream[T]{
 		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		nextData: make(chan orderedData[T]),
 	}
 
 	go func() {

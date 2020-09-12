@@ -5,15 +5,23 @@ package gostream
 import (
 	"fmt"
 	"sort"
+	"sync"
 )
 
+type orderedData[T any] struct {
+	order uint64
+	data  T
+}
+
 type genericStream[T any] struct {
-	closed bool
+	lock     sync.Mutex
+	closed   bool
+	parallel bool
 
 	prevReq  chan struct{}
-	prevData chan T
+	prevData chan orderedData[T]
 	nextReq  chan struct{}
-	nextData chan T
+	nextData chan orderedData[T]
 }
 
 func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
@@ -21,11 +29,14 @@ func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 		prevReq:  gs.nextReq,
 		prevData: gs.nextData,
 		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		nextData: make(chan orderedData[T]),
 	}
 }
 
 func (gs *genericStream[T]) validateState() {
+	gs.lock.Lock()
+	defer gs.lock.Unlock()
+
 	if gs.closed {
 		panic("stream has already been closed")
 	}
@@ -38,6 +49,13 @@ func (gs *genericStream[T]) discard(c <-chan struct{}) {
 }
 
 func (gs *genericStream[T]) close() {
+	gs.lock.Lock()
+	defer gs.lock.Unlock()
+
+	if gs.closed {
+		return
+	}
+
 	close(gs.nextData)
 	close(gs.prevReq)
 	gs.discard(gs.nextReq)
@@ -45,7 +63,7 @@ func (gs *genericStream[T]) close() {
 	gs.closed = true
 }
 
-func (gs *genericStream[T]) getPrevData() (T, bool) {
+func (gs *genericStream[T]) getPrevData() (orderedData[T], bool) {
 	gs.prevReq <- struct{}{}
 	data, ok := <-gs.prevData
 	return data, ok
@@ -53,8 +71,8 @@ func (gs *genericStream[T]) getPrevData() (T, bool) {
 
 func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 	gs.nextReq <- struct{}{}
-	for t := range gs.nextData {
-		op(t)
+	for od := range gs.nextData {
+		op(od.data)
 		gs.nextReq <- struct{}{}
 	}
 	close(gs.nextReq)
@@ -63,14 +81,41 @@ func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 
 func (gs *genericStream[T]) terminalOpMatch(match func(t T) bool) {
 	gs.nextReq <- struct{}{}
-	for t := range gs.nextData {
-		if !match(t) {
+	for od := range gs.nextData {
+		if !match(od.data) {
 			break
 		}
 		gs.nextReq <- struct{}{}
 	}
 	close(gs.nextReq)
 	gs.closed = true
+}
+
+func (gs *genericStream[T]) Parallel() Stream[T] {
+	gs.validateState()
+
+	if gs.parallel {
+		return gs
+	}
+
+	newGS := newGenericStream(gs)
+	newGS.parallel = true
+
+	go newGS.drain()
+
+	return newGS
+}
+
+func (gs *genericStream[T]) drain() {
+	for range gs.nextReq {
+		data, ok := gs.getPrevData()
+		if !ok {
+			gs.close()
+			return
+		}
+		gs.nextData <- data
+	}
+	gs.close()
 }
 
 func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
@@ -84,20 +129,20 @@ func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 
 func (gs *genericStream[T]) filter(predicate Predicate[T]) {
 	for range gs.nextReq {
-		data, ok := gs.getPrevData()
+		od, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
 			return
 		}
 
-		for !predicate(data) {
-			data, ok = gs.getPrevData()
+		for !predicate(od.data) {
+			od, ok = gs.getPrevData()
 			if !ok {
 				gs.close()
 				return
 			}
 		}
-		gs.nextData <- data
+		gs.nextData <- od
 	}
 
 	gs.close()
@@ -142,13 +187,13 @@ func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
 
 func (gs *genericStream[T]) peek(action Consumer[T]) {
 	for range gs.nextReq {
-		data, ok := gs.getPrevData()
+		od, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
 			return
 		}
-		action(data)
-		gs.nextData <- data
+		action(od.data)
+		gs.nextData <- od
 	}
 	gs.close()
 }
