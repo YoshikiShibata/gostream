@@ -1,3 +1,6 @@
+2020/09/13 Map() function supports parallel.
+2020/09/12 Filter() function supports parallel.
+2020/09/12 Parallel() method is implemented
 2020/09/11 ToMapCollector() function is implemented
 2020/09/10 PartitioningByToSliceCoolector() function is implemented
 2020/09/09 PartitioningByCollector() function is implemented

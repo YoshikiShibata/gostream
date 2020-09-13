@@ -198,7 +198,7 @@ func TestStream_Sorted(t *testing.T) {
 	})
 
 	t.Run("parallel", func(t *testing.T) {
-		defer trace("TestStream_Sorted/serial")()
+		defer trace("TestStream_Sorted/parallel")()
 
 		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
 		result := s.Parallel().Sorted(func(t1, t2 int) bool {
