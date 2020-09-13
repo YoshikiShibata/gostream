@@ -39,8 +39,9 @@ func Map[T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 	}()
 
 	return &genericStream[R]{
-		nextReq:  nextReq,
-		nextData: nextData,
+		parallelCount: 1,
+		nextReq:       nextReq,
+		nextData:      nextData,
 	}
 }
 
@@ -93,8 +94,9 @@ func FlatMap[T, R any](
 	}()
 
 	return &genericStream[R]{
-		nextReq:  nextReq,
-		nextData: nextData,
+		parallelCount: 1,
+		nextReq:       nextReq,
+		nextData:      nextData,
 	}
 }
 
@@ -127,8 +129,9 @@ func Of[T any](data ...T) Stream[T] {
 	}()
 
 	return &genericStream[T]{
-		nextReq:  nextReq,
-		nextData: nextData,
+		parallelCount: 1,
+		nextReq:       nextReq,
+		nextData:      nextData,
 	}
 }
 
@@ -139,10 +142,11 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 	s.validateState()
 
 	gs := &genericStream[T]{
-		prevReq:  s.nextReq,
-		prevData: s.nextData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan orderedData[T]),
+		parallelCount: 1,
+		prevReq:       s.nextReq,
+		prevData:      s.nextData,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
@@ -329,8 +333,9 @@ func CollectByCollector[T, R, A any](
 // Empty returns an empty Stream
 func Empty[T any]() Stream[T] {
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan orderedData[T]),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
@@ -348,8 +353,9 @@ func Empty[T any]() Stream[T] {
 // consisiting of seed, f(seed), f(f(seed)), etc.
 func Iterate[T any](seed T, f UnaryOperator[T]) Stream[T] {
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan orderedData[T]),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
@@ -389,8 +395,9 @@ func IterateN[T any](
 	next UnaryOperator[T]) Stream[T] {
 
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan orderedData[T]),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
@@ -425,8 +432,9 @@ func IterateN[T any](
 // constant streams, streams of random elements, etc.
 func Generate[T any](s Supplier[T]) Stream[T] {
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan orderedData[T]),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
@@ -453,8 +461,9 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 	bgs.validateState()
 
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan orderedData[T]),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {

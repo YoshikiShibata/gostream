@@ -15,9 +15,10 @@ type orderedData[T any] struct {
 }
 
 type genericStream[T any] struct {
-	lock     sync.Mutex
-	closed   bool
-	parallel bool
+	lock          sync.Mutex
+	closed        bool
+	parallel      bool
+	parallelCount int
 
 	prevReq  chan struct{}
 	prevData chan orderedData[T]
@@ -25,13 +26,18 @@ type genericStream[T any] struct {
 	nextData chan orderedData[T]
 }
 
+var (
+	goMaxProcs = runtime.GOMAXPROCS(-1)
+)
+
 func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 	return &genericStream[T]{
-		parallel: gs.parallel,
-		prevReq:  gs.nextReq,
-		prevData: gs.nextData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan orderedData[T]),
+		parallel:      gs.parallel,
+		parallelCount: gs.parallelCount,
+		prevReq:       gs.nextReq,
+		prevData:      gs.nextData,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 }
 
@@ -58,10 +64,32 @@ func (gs *genericStream[T]) close() {
 		return
 	}
 
+	if gs.parallelCount > 1 {
+		gs.parallelCount--
+		return
+	}
+
 	close(gs.nextData)
 	close(gs.prevReq)
 	gs.discard(gs.nextReq)
 
+	gs.closed = true
+}
+
+func (gs *genericStream[T]) terminalClose() {
+	gs.lock.Lock()
+	defer gs.lock.Unlock()
+
+	if gs.closed {
+		return
+	}
+
+	if gs.parallelCount > 1 {
+		gs.parallelCount--
+		return
+	}
+
+	close(gs.nextReq)
 	gs.closed = true
 }
 
@@ -77,12 +105,7 @@ func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 		op(od.data)
 		gs.nextReq <- struct{}{}
 	}
-	gs.lock.Lock()
-	if !gs.closed {
-		close(gs.nextReq)
-		gs.closed = true
-	}
-	gs.lock.Unlock()
+	gs.terminalClose()
 }
 
 func (gs *genericStream[T]) terminalOpOrderedData(
@@ -92,8 +115,8 @@ func (gs *genericStream[T]) terminalOpOrderedData(
 		op(od)
 		gs.nextReq <- struct{}{}
 	}
-	close(gs.nextReq)
-	gs.closed = true
+
+	gs.terminalClose()
 }
 
 func (gs *genericStream[T]) terminalOpMatch(match func(t T) bool) {
@@ -104,8 +127,8 @@ func (gs *genericStream[T]) terminalOpMatch(match func(t T) bool) {
 		}
 		gs.nextReq <- struct{}{}
 	}
-	close(gs.nextReq)
-	gs.closed = true
+
+	gs.terminalClose()
 }
 
 func (gs *genericStream[T]) Parallel() Stream[T] {
@@ -117,8 +140,11 @@ func (gs *genericStream[T]) Parallel() Stream[T] {
 
 	newGS := newGenericStream(gs)
 	newGS.parallel = true
+	newGS.parallelCount = goMaxProcs
 
-	go newGS.drain()
+	for i := 0; i < newGS.parallelCount; i++ {
+		go newGS.drain()
+	}
 
 	return newGS
 }
@@ -140,7 +166,10 @@ func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 
 	newGS := newGenericStream(gs)
 
-	go newGS.filter(predicate)
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go newGS.filter(predicate)
+	}
 	return newGS
 }
 
@@ -179,10 +208,10 @@ func (gs *genericStream[T]) ForEach(action Consumer[T]) {
 		return
 	}
 
-	maxprocs := runtime.GOMAXPROCS(-1)
 	var wg sync.WaitGroup
 
-	for i := 0; i < (maxprocs + 1); i++ {
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
 		wg.Add(1)
 		go func() {
 			gs.terminalOp(action)
@@ -197,9 +226,31 @@ func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 
 	var dataSlice []T
 
-	gs.terminalOp(func(t T) {
-		dataSlice = append(dataSlice, t)
-	})
+	if !gs.parallel {
+		gs.terminalOp(func(t T) {
+			dataSlice = append(dataSlice, t)
+		})
+	} else {
+		slices := make(chan []T)
+
+		parallelCount := gs.parallelCount
+		for i := 0; i < parallelCount; i++ {
+			go func() {
+				var slice []T
+
+				gs.terminalOp(func(t T) {
+					slice = append(slice, t)
+				})
+
+				slices <- slice
+			}()
+		}
+
+		for i := 0; i < parallelCount; i++ {
+			slice := <-slices
+			dataSlice = append(dataSlice, slice...)
+		}
+	}
 
 	sort.Slice(dataSlice, func(i, j int) bool {
 		return less(dataSlice[i], dataSlice[j])
@@ -308,18 +359,36 @@ func (gs *genericStream[T]) ToSlice() []T {
 		return result
 	}
 
-	// parallel
+	results := make(chan []orderedData[T])
 
+	// collect in parallel
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			var ods []orderedData[T]
+
+			gs.terminalOpOrderedData(func(od orderedData[T]) {
+				ods = append(ods, od)
+			})
+
+			results <- ods
+		}()
+	}
+
+	// combine all results
 	var ods []orderedData[T]
+	for i := 0; i < parallelCount; i++ {
+		result := <-results
+		ods = append(ods, result...)
+	}
+	close(results)
 
-	gs.terminalOpOrderedData(func(od orderedData[T]) {
-		ods = append(ods, od)
-	})
-
+	// sort
 	sort.Slice(ods, func(i, j int) bool {
 		return ods[i].order < ods[j].order
 	})
 
+	// copy sorted result to []T
 	result := make([]T, len(ods))
 	for i := 0; i < len(ods); i++ {
 		result[i] = ods[i].data
