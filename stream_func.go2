@@ -17,29 +17,48 @@ func Map[T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 	nextReq := make(chan struct{})
 	nextData := make(chan orderedData[R])
 
-	go func() {
-		for range nextReq {
-			gs.nextReq <- struct{}{}
-			od, ok := <-gs.nextData
-			if !ok {
-				close(nextData)
-				close(gs.nextReq)
-				go func() {
-					for range nextReq {
-					}
-				}()
-				return
-			}
-			r := mapper(od.data)
-			nextData <- orderedData[R]{
-				order: od.order,
-				data:  r,
-			}
+	closeCounter := gs.parallelCount
+	var lock sync.Mutex
+
+	closeChans := func() {
+		lock.Lock()
+		defer lock.Unlock()
+
+		if closeCounter > 1 {
+			closeCounter--
+			return
 		}
-	}()
+
+		close(nextData)
+		close(gs.nextReq)
+		go func() {
+			for range nextReq {
+			}
+		}()
+	}
+
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			for range nextReq {
+				gs.nextReq <- struct{}{}
+				od, ok := <-gs.nextData
+				if !ok {
+					closeChans()
+					return
+				}
+				r := mapper(od.data)
+				nextData <- orderedData[R]{
+					order: od.order,
+					data:  r,
+				}
+			}
+		}()
+	}
 
 	return &genericStream[R]{
-		parallelCount: 1,
+		parallel:      gs.parallel,
+		parallelCount: parallelCount,
 		nextReq:       nextReq,
 		nextData:      nextData,
 	}

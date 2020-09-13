@@ -351,6 +351,8 @@ func (gs *genericStream[T]) skip(n int) {
 func (gs *genericStream[T]) ToSlice() []T {
 	gs.validateState()
 
+	fmt.Printf("ToSlice: gs: %v\n", gs)
+
 	if !gs.parallel {
 		var result []T
 		gs.terminalOp(func(t T) {

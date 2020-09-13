@@ -127,11 +127,25 @@ func TestStream_Map(t *testing.T) {
 			want = append(want, strconv.Itoa(i))
 		}
 
-		result := Map(Of(input...), strconv.Itoa).ToSlice()
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Map/serial")()
 
-		if !slices.Equal(result, want) {
-			t.Errorf("result is %v, want %v", result, want)
-		}
+			result := Map(Of(input...), strconv.Itoa).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Map/parallel")()
+
+			result := Map(Of(input...).Parallel(), strconv.Itoa).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
 	}
 }
 
