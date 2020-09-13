@@ -69,6 +69,7 @@ func (gs *genericStream[T]) close() {
 		return
 	}
 
+	fmt.Println("DEBUG Close")
 	close(gs.nextData)
 	close(gs.prevReq)
 	gs.discard(gs.nextReq)
@@ -350,8 +351,6 @@ func (gs *genericStream[T]) skip(n int) {
 
 func (gs *genericStream[T]) ToSlice() []T {
 	gs.validateState()
-
-	fmt.Printf("ToSlice: gs: %v\n", gs)
 
 	if !gs.parallel {
 		var result []T

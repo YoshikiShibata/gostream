@@ -168,27 +168,34 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 		nextData:      make(chan orderedData[T]),
 	}
 
+	closeChans := func() {
+		for i := 0; i < (s.parallelCount - 1); i++ {
+			s.nextReq <- struct{}{}
+		}
+		gs.close()
+	}
+
 	go func() {
 		seen := make(map[T]bool)
 
 		for range gs.nextReq {
 			od, ok := gs.getPrevData()
 			if !ok {
-				gs.close()
+				closeChans()
 				return
 			}
 
 			for seen[od.data] {
 				od, ok = gs.getPrevData()
 				if !ok {
-					gs.close()
+					closeChans()
 					return
 				}
 			}
 			gs.nextData <- od
 			seen[od.data] = true
 		}
-		gs.close()
+		closeChans()
 	}()
 
 	return gs
