@@ -177,17 +177,15 @@ func TestStream_Distinct(t *testing.T) {
 			}
 		})
 
-		/*
-			t.Run("parallel", func(t *testing.T) {
-				defer trace("TestStream_Distinct/parallel")()
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Distinct/parallel")()
 
-				result := Distinct(Of(input...).Parallel()).ToSlice()
+			result := Distinct(Of(input...).Parallel()).ToSlice()
 
-				if !slices.Equal(result, want) {
-					t.Errorf("result is %v, want %v", result, want)
-				}
-			})
-		*/
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
 	}
 }
 

@@ -69,7 +69,6 @@ func (gs *genericStream[T]) close() {
 		return
 	}
 
-	fmt.Println("DEBUG Close")
 	close(gs.nextData)
 	close(gs.prevReq)
 	gs.discard(gs.nextReq)
