@@ -27,7 +27,7 @@ type genericStream[T any] struct {
 }
 
 var (
-	goMaxProcs = runtime.GOMAXPROCS(-1)
+	goMaxProcs = runtime.GOMAXPROCS(-1) * 2
 )
 
 func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
@@ -264,7 +264,11 @@ func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
 
 	newGS := newGenericStream(gs)
 
-	go newGS.peek(action)
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go newGS.peek(action)
+	}
+
 	return newGS
 }
 

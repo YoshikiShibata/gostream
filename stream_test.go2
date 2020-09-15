@@ -5,6 +5,7 @@ package gostream
 import (
 	"reflect"
 	"slices"
+	"sort"
 	"strconv"
 	"sync"
 	"testing"
@@ -224,33 +225,86 @@ func TestStream_Sorted(t *testing.T) {
 func TestStream_Peek(t *testing.T) {
 	defer trace("TestStream_Peek")()
 
-	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
+		var want []int
 
-	var lock sync.Mutex
-	var peeked []int
-	peekFunc := func(t int) {
-		lock.Lock()
-		peeked = append(peeked, t)
-		lock.Unlock()
-	}
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, tc.dataSize-1-i)
+			want = append(want, i)
+		}
 
-	result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
-		return t1 < t2
-	}).ToSlice()
-	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	if !slices.Equal(result, want) {
-		t.Errorf("result is %v, want %v", result, want)
-	}
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Peek/serial")()
 
-	lock.Lock()
-	wantPeeked := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	if !slices.Equal(peeked, wantPeeked) {
-		t.Errorf("peeked is %v, want %v", peeked, wantPeeked)
+			s := Of(data...)
+
+			var lock sync.Mutex
+			var peeked []int
+			peekFunc := func(t int) {
+				lock.Lock()
+				peeked = append(peeked, t)
+				lock.Unlock()
+			}
+
+			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+
+			if !slices.Equal(peeked, data) {
+				t.Errorf("peeked is %v, want %v", peeked, data)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Peek/parallel")()
+
+			s := Of(data...).Parallel()
+
+			var lock sync.Mutex
+			var peeked []int
+			peekFunc := func(t int) {
+				lock.Lock()
+				peeked = append(peeked, t)
+				lock.Unlock()
+			}
+
+			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+
+			lock.Lock()
+			defer lock.Unlock()
+
+			if tc.dataSize != 0 && tc.dataSize != 1 {
+				if slices.Equal(peeked, data) {
+					t.Logf("tc.dataSize = %d", tc.dataSize)
+					t.Errorf("peeked is identical to data")
+				}
+			}
+			sort.Slice(peeked, func(i, j int) bool {
+				return peeked[i] < peeked[j]
+			})
+			if !slices.Equal(peeked, want) {
+				t.Errorf("peeked is %v, want %v", peeked, want)
+			}
+		})
 	}
-	lock.Unlock()
 }
 
 func TestStream_Limit(t *testing.T) {
