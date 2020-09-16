@@ -58,7 +58,7 @@ func TestStream_ForEach(t *testing.T) {
 			}
 			return true
 		}
-		if isSorted() {
+		if goMaxProcs != 1 && isSorted() {
 			t.Errorf("result(%v) is sorted\n", result)
 		}
 	})
@@ -291,7 +291,7 @@ func TestStream_Peek(t *testing.T) {
 			lock.Lock()
 			defer lock.Unlock()
 
-			if tc.dataSize != 0 && tc.dataSize != 1 {
+			if tc.dataSize != 0 && tc.dataSize != 1 && goMaxProcs != 1 {
 				if slices.Equal(peeked, data) {
 					t.Logf("tc.dataSize = %d", tc.dataSize)
 					t.Errorf("peeked is identical to data")

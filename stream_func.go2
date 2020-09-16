@@ -4,6 +4,7 @@ package gostream
 
 import (
 	"constraints"
+	"fmt"
 	"sort"
 	"sync"
 )
@@ -129,9 +130,12 @@ func Of[T any](data ...T) Stream[T] {
 		i := 0
 		for range nextReq {
 			if i == len(data) {
+				//fmt.Println("Of 00")
 				close(nextData)
+				//fmt.Println("Of 01")
 				go func() {
 					for range nextReq {
+						//fmt.Println("Of 02")
 					}
 				}()
 				return
@@ -144,7 +148,9 @@ func Of[T any](data ...T) Stream[T] {
 				i++
 			}
 		}
+		//fmt.Println("Of 03")
 		close(nextData)
+		//fmt.Println("Of 04")
 	}()
 
 	return &genericStream[T]{
@@ -178,22 +184,31 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 		}
 
 		for range gs.nextReq {
+			fmt.Println("step 00")
 			od, ok := gs.getPrevData()
+			fmt.Println("step 01")
 			if !ok {
+				fmt.Printf("gs.close(): %p\n", gs)
 				gs.close()
 				return
 			}
 
+			fmt.Println("step 02")
 			for seen[od.data] {
+				fmt.Println("step 03")
 				od, ok = gs.getPrevData()
+				fmt.Println("step 04")
 				if !ok {
+					fmt.Printf("gs.close(): %p\n", gs)
 					gs.close()
 					return
 				}
 			}
+			fmt.Println("step 05")
 			gs.nextData <- od
 			seen[od.data] = true
 		}
+		fmt.Printf("gs.close(): %p\n", gs)
 		gs.close()
 	}()
 

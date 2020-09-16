@@ -27,7 +27,7 @@ type genericStream[T any] struct {
 }
 
 var (
-	goMaxProcs = runtime.GOMAXPROCS(-1) * 2
+	goMaxProcs = runtime.GOMAXPROCS(-1)
 )
 
 func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
@@ -57,6 +57,8 @@ func (gs *genericStream[T]) discard(c <-chan struct{}) {
 }
 
 func (gs *genericStream[T]) close() {
+	defer trace(fmt.Sprintf("close: %p", gs))()
+
 	gs.lock.Lock()
 	defer gs.lock.Unlock()
 
@@ -69,6 +71,7 @@ func (gs *genericStream[T]) close() {
 		return
 	}
 
+	fmt.Println("close all")
 	close(gs.nextData)
 	close(gs.prevReq)
 	gs.discard(gs.nextReq)
@@ -150,13 +153,19 @@ func (gs *genericStream[T]) Parallel() Stream[T] {
 }
 
 func (gs *genericStream[T]) drain() {
+	defer trace("drain")()
+
 	for range gs.nextReq {
+		fmt.Println("drain 00")
 		data, ok := gs.getPrevData()
+		fmt.Println("drain 01")
 		if !ok {
 			gs.close()
 			return
 		}
+		fmt.Println("drain 02")
 		gs.nextData <- data
+		fmt.Println("drain 03")
 	}
 	gs.close()
 }

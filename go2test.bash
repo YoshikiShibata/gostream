@@ -8,6 +8,15 @@ if [ $? != 0 ]; then
 fi
 
 
-go tool go2go test 
+for maxprocs in 1 4 8 16 32 64 96;
+do
+    export GOMAXPROCS=$maxprocs
+	echo "GOMAXPROCS=$GOMAXPROCS"
+    go tool go2go test 
+	if [ $? != 0 ]; then
+		exit 1
+	fi
+	echo ""
+done;
 
 rm *.go
