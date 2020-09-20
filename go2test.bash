@@ -8,7 +8,7 @@ if [ $? != 0 ]; then
 fi
 
 
-for maxprocs in 1 4 8 16 32 64 96;
+for maxprocs in 1 4 8 16 32 64 128 256;
 do
     export GOMAXPROCS=$maxprocs
 	echo "GOMAXPROCS=$GOMAXPROCS"

@@ -22,6 +22,8 @@ type genericStream[T any] struct {
 
 	prevReq  chan struct{}
 	prevData chan orderedData[T]
+	prevDone chan struct{}
+
 	nextReq  chan struct{}
 	nextData chan orderedData[T]
 }
@@ -34,10 +36,13 @@ func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 	return &genericStream[T]{
 		parallel:      gs.parallel,
 		parallelCount: gs.parallelCount,
-		prevReq:       gs.nextReq,
-		prevData:      gs.nextData,
-		nextReq:       make(chan struct{}),
-		nextData:      make(chan orderedData[T]),
+
+		prevReq:  gs.nextReq,
+		prevData: gs.nextData,
+		prevDone: gs.prevDone,
+
+		nextReq:  make(chan struct{}),
+		nextData: make(chan orderedData[T]),
 	}
 }
 
@@ -49,6 +54,7 @@ func (gs *genericStream[T]) validateState() {
 		panic("stream has already been closed")
 	}
 }
+
 func (gs *genericStream[T]) discard(c <-chan struct{}) {
 	go func() {
 		for range c {
@@ -57,8 +63,6 @@ func (gs *genericStream[T]) discard(c <-chan struct{}) {
 }
 
 func (gs *genericStream[T]) close() {
-	defer trace(fmt.Sprintf("close: %p", gs))()
-
 	gs.lock.Lock()
 	defer gs.lock.Unlock()
 
@@ -71,11 +75,9 @@ func (gs *genericStream[T]) close() {
 		return
 	}
 
-	fmt.Println("close all")
 	close(gs.nextData)
 	close(gs.prevReq)
 	gs.discard(gs.nextReq)
-
 	gs.closed = true
 }
 
@@ -94,6 +96,15 @@ func (gs *genericStream[T]) terminalClose() {
 
 	close(gs.nextReq)
 	gs.closed = true
+}
+
+func (gs *genericStream[T]) getNextReq() bool {
+	select {
+	case _, ok := <-gs.nextReq:
+		return ok
+	case <-gs.prevDone:
+		return false
+	}
 }
 
 func (gs *genericStream[T]) getPrevData() (orderedData[T], bool) {
@@ -155,17 +166,13 @@ func (gs *genericStream[T]) Parallel() Stream[T] {
 func (gs *genericStream[T]) drain() {
 	defer trace("drain")()
 
-	for range gs.nextReq {
-		fmt.Println("drain 00")
+	for gs.getNextReq() {
 		data, ok := gs.getPrevData()
-		fmt.Println("drain 01")
 		if !ok {
 			gs.close()
 			return
 		}
-		fmt.Println("drain 02")
 		gs.nextData <- data
-		fmt.Println("drain 03")
 	}
 	gs.close()
 }
@@ -183,7 +190,7 @@ func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 }
 
 func (gs *genericStream[T]) filter(predicate Predicate[T]) {
-	for range gs.nextReq {
+	for gs.getNextReq() {
 		od, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
@@ -282,7 +289,7 @@ func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
 }
 
 func (gs *genericStream[T]) peek(action Consumer[T]) {
-	for range gs.nextReq {
+	for gs.getNextReq() {
 		od, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
@@ -313,7 +320,7 @@ func (gs *genericStream[T]) limit(maxSize int) {
 	}
 
 	count := maxSize
-	for range gs.nextReq {
+	for gs.getNextReq() {
 		data, ok := gs.getPrevData()
 		if !ok {
 			gs.close()
@@ -339,7 +346,7 @@ func (gs *genericStream[T]) Skip(n int) Stream[T] {
 }
 
 func (gs *genericStream[T]) skip(n int) {
-	for range gs.nextReq {
+	for gs.getNextReq() {
 		// Skip n elements
 		for n > 0 {
 			_, ok := gs.getPrevData()

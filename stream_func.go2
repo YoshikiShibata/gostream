@@ -4,7 +4,6 @@ package gostream
 
 import (
 	"constraints"
-	"fmt"
 	"sort"
 	"sync"
 )
@@ -125,17 +124,16 @@ func FlatMap[T, R any](
 func Of[T any](data ...T) Stream[T] {
 	nextReq := make(chan struct{})
 	nextData := make(chan orderedData[T])
+	prevDone := make(chan struct{})
 
 	go func() {
 		i := 0
 		for range nextReq {
 			if i == len(data) {
-				//fmt.Println("Of 00")
 				close(nextData)
-				//fmt.Println("Of 01")
+				close(prevDone)
 				go func() {
 					for range nextReq {
-						//fmt.Println("Of 02")
 					}
 				}()
 				return
@@ -148,13 +146,13 @@ func Of[T any](data ...T) Stream[T] {
 				i++
 			}
 		}
-		//fmt.Println("Of 03")
 		close(nextData)
-		//fmt.Println("Of 04")
+		close(prevDone)
 	}()
 
 	return &genericStream[T]{
 		parallelCount: 1,
+		prevDone:      prevDone,
 		nextReq:       nextReq,
 		nextData:      nextData,
 	}
@@ -177,38 +175,23 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 	go func() {
 		seen := make(map[T]bool)
 
-		// To convert parallel stream into a serial parallel, send
-		// next requests beforehand.
-		for i := 0; i < (s.parallelCount - 1); i++ {
-			s.nextReq <- struct{}{}
-		}
-
 		for range gs.nextReq {
-			fmt.Println("step 00")
 			od, ok := gs.getPrevData()
-			fmt.Println("step 01")
 			if !ok {
-				fmt.Printf("gs.close(): %p\n", gs)
 				gs.close()
 				return
 			}
 
-			fmt.Println("step 02")
 			for seen[od.data] {
-				fmt.Println("step 03")
 				od, ok = gs.getPrevData()
-				fmt.Println("step 04")
 				if !ok {
-					fmt.Printf("gs.close(): %p\n", gs)
 					gs.close()
 					return
 				}
 			}
-			fmt.Println("step 05")
 			gs.nextData <- od
 			seen[od.data] = true
 		}
-		fmt.Printf("gs.close(): %p\n", gs)
 		gs.close()
 	}()
 

@@ -3,6 +3,8 @@
 package gostream
 
 import (
+	"fmt"
+	"os"
 	"reflect"
 	"slices"
 	"sort"
@@ -178,15 +180,24 @@ func TestStream_Distinct(t *testing.T) {
 			}
 		})
 
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Distinct/parallel")()
+		t.Run("parallel",
+			func(t *testing.T) {
+				defer trace("TestStream_Distinct/parallel")()
+				fmt.Printf("parallel: dataSize = %d\n", tc.dataSize)
 
-			result := Distinct(Of(input...).Parallel()).ToSlice()
+				result := Distinct(Of(input...).Parallel()).ToSlice()
 
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
+				for i := 1; i < tc.dataSize; i++ {
+					if result[i-1] > result[i] {
+						t.Errorf("result[%d] is %d, result[%d] is %d",
+							i-1, result[i-1], i, result[i])
+					}
+				}
+				if !slices.Equal(result, want) {
+					t.Errorf("result is %v, want %v", result, want)
+					os.Exit(1)
+				}
+			})
 	}
 }
 
@@ -310,19 +321,32 @@ func TestStream_Peek(t *testing.T) {
 func TestStream_Limit(t *testing.T) {
 	defer trace("TestStream_Limit")()
 
-	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
+	for _, tc := range [...]struct {
+		dataSize int
+		limit    int
+	}{
+		{dataSize: 0, limit: 1},
+		{dataSize: 1, limit: 1},
+		{dataSize: 1000, limit: 100},
+	} {
+		var data []int
+		var want []int
 
-	sorted := s.Limit(5).
-		Sorted(func(t1, t2 int) bool {
-			return t1 < t2
-		}).ToSlice()
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			if i < tc.limit {
+				want = append(want, i)
+			}
+		}
 
-	want := []int{6, 7, 8, 9, 10}
-	if !slices.Equal(sorted, want) {
-		t.Errorf("sorted is %v, want %v", sorted, want)
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Limit/serial")()
+
+			result := Of(data...).Limit(tc.limit).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
 	}
 }
 
