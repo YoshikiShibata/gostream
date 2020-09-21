@@ -467,16 +467,47 @@ func TestStream_ToSlice(t *testing.T) {
 func TestStream_Reduce(t *testing.T) {
 	defer trace("TestStream_Reduce")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	sum := Of(data...).Reduce(0, func(t1, t2 int) int {
-		return t1 + t2
-	})
-	want := 0
-	for _, d := range data {
-		want += d
-	}
-	if sum != want {
-		t.Errorf("sum is %d, want %d", sum, want)
+	for _, tc := range [...]struct {
+		dataSize int
+		skip     int
+	}{
+		{dataSize: 0, skip: 1},
+		{dataSize: 1, skip: 1},
+		{dataSize: 1000, skip: 100},
+	} {
+		var data []int
+		var want int
+
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			want += i
+		}
+
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Reduce/serial:" + ds)()
+
+			result := Of(data...).Reduce(0, func(t1, t2 int) int {
+				return t1 + t2
+			})
+
+			if result != want {
+				t.Errorf("result is %d, want %d", result, want)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Reduce/parallel:" + ds)()
+
+			result := Of(data...).Parallel().Reduce(0, func(t1, t2 int) int {
+				return t1 + t2
+			})
+
+			if result != want {
+				t.Errorf("result is %d, want %d", result, want)
+			}
+		})
 	}
 }
 
