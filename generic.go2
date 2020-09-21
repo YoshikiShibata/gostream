@@ -15,10 +15,12 @@ type orderedData[T any] struct {
 }
 
 type genericStream[T any] struct {
-	lock          sync.Mutex
-	closed        bool
+	lock   sync.Mutex
+	closed bool
+
 	parallel      bool
 	parallelCount int
+	ordered       bool
 
 	prevReq  chan struct{}
 	prevData chan orderedData[T]
@@ -164,8 +166,6 @@ func (gs *genericStream[T]) Parallel() Stream[T] {
 }
 
 func (gs *genericStream[T]) drain() {
-	defer trace("drain")()
-
 	for gs.getNextReq() {
 		data, ok := gs.getPrevData()
 		if !ok {
@@ -304,8 +304,15 @@ func (gs *genericStream[T]) peek(action Consumer[T]) {
 func (gs *genericStream[T]) Limit(maxSize int) Stream[T] {
 	gs.validateState()
 
+	if gs.ordered && gs.parallelCount > 1 {
+		panic("Limit doesn't support ordered parallel stream")
+	}
+
 	newGS := newGenericStream(gs)
 
+	// we don't process elements in parallel to limit the
+	// number of elements.
+	newGS.parallelCount = 1
 	go newGS.limit(maxSize)
 	return newGS
 }
@@ -339,7 +346,15 @@ func (gs *genericStream[T]) limit(maxSize int) {
 func (gs *genericStream[T]) Skip(n int) Stream[T] {
 	gs.validateState()
 
+	if gs.ordered && gs.parallelCount > 1 {
+		panic("Skip doesn't support ordered parallel stream")
+	}
+
 	newGS := newGenericStream(gs)
+
+	// we don't process elements in parallel to limit the
+	// number of elements.
+	newGS.parallelCount = 1
 
 	go newGS.skip(n)
 	return newGS

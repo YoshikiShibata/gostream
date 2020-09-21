@@ -3,9 +3,7 @@
 package gostream
 
 import (
-	"fmt"
 	"os"
-	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -86,8 +84,10 @@ func TestStream_Filter(t *testing.T) {
 			}
 		}
 
+		ds := strconv.Itoa(tc.dataSize)
+
 		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Filter/serial")()
+			defer trace("TestStream_Filter/serial:" + ds)()
 
 			result := Of(input...).Filter(func(t int) bool {
 				return t&1 == 1
@@ -99,7 +99,7 @@ func TestStream_Filter(t *testing.T) {
 		})
 
 		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Filter/parallel")()
+			defer trace("TestStream_Filter/parallel:" + ds)()
 
 			result := Of(input...).Parallel().Filter(func(t int) bool {
 				return t&1 == 1
@@ -130,8 +130,10 @@ func TestStream_Map(t *testing.T) {
 			want = append(want, strconv.Itoa(i))
 		}
 
+		ds := strconv.Itoa(tc.dataSize)
+
 		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Map/serial")()
+			defer trace("TestStream_Map/serial:" + ds)()
 
 			result := Map(Of(input...), strconv.Itoa).ToSlice()
 
@@ -141,7 +143,7 @@ func TestStream_Map(t *testing.T) {
 		})
 
 		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Map/parallel")()
+			defer trace("TestStream_Map/parallel:" + ds)()
 
 			result := Map(Of(input...).Parallel(), strconv.Itoa).ToSlice()
 
@@ -170,8 +172,10 @@ func TestStream_Distinct(t *testing.T) {
 			want = append(want, i)
 		}
 
+		ds := strconv.Itoa(tc.dataSize)
+
 		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Distinct/serial")()
+			defer trace("TestStream_Distinct/serial:" + ds)()
 
 			result := Distinct(Of(input...)).ToSlice()
 
@@ -182,8 +186,7 @@ func TestStream_Distinct(t *testing.T) {
 
 		t.Run("parallel",
 			func(t *testing.T) {
-				defer trace("TestStream_Distinct/parallel")()
-				fmt.Printf("parallel: dataSize = %d\n", tc.dataSize)
+				defer trace("TestStream_Distinct/parallel:" + ds)()
 
 				result := Distinct(Of(input...).Parallel()).ToSlice()
 
@@ -204,33 +207,47 @@ func TestStream_Distinct(t *testing.T) {
 func TestStream_Sorted(t *testing.T) {
 	defer trace("TestStream_Sorted")()
 
-	t.Run("serial", func(t *testing.T) {
-		defer trace("TestStream_Sorted/serial")()
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
+		var want []int
 
-		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-		result := s.Sorted(func(t1, t2 int) bool {
-			return t1 < t2
-		}).ToSlice()
-
-		want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-		if !slices.Equal(result, want) {
-			t.Errorf("result is %v, want %v", result, want)
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, tc.dataSize-i-1)
+			want = append(want, i)
 		}
-	})
 
-	t.Run("parallel", func(t *testing.T) {
-		defer trace("TestStream_Sorted/parallel")()
+		ds := strconv.Itoa(tc.dataSize)
 
-		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-		result := s.Parallel().Sorted(func(t1, t2 int) bool {
-			return t1 < t2
-		}).ToSlice()
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Sorted/serial:" + ds)()
 
-		want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-		if !slices.Equal(result, want) {
-			t.Errorf("result is %v, want %v", result, want)
-		}
-	})
+			result := Of(data...).Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Sorted/parallel:" + ds)()
+
+			result := Of(data...).Parallel().Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
+	}
 }
 
 func TestStream_Peek(t *testing.T) {
@@ -251,8 +268,10 @@ func TestStream_Peek(t *testing.T) {
 			want = append(want, i)
 		}
 
+		ds := strconv.Itoa(tc.dataSize)
+
 		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Peek/serial")()
+			defer trace("TestStream_Peek/serial:" + ds)()
 
 			s := Of(data...)
 
@@ -280,7 +299,7 @@ func TestStream_Peek(t *testing.T) {
 		})
 
 		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Peek/parallel")()
+			defer trace("TestStream_Peek/parallel:" + ds)()
 
 			s := Of(data...).Parallel()
 
@@ -339,10 +358,21 @@ func TestStream_Limit(t *testing.T) {
 			}
 		}
 
+		ds := strconv.Itoa(tc.dataSize)
+
 		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Limit/serial")()
+			defer trace("TestStream_Limit/serial:" + ds)()
 
 			result := Of(data...).Limit(tc.limit).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Limit/parallel:" + ds)()
+
+			result := Of(data...).Parallel().Limit(tc.limit).ToSlice()
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
@@ -353,57 +383,84 @@ func TestStream_Limit(t *testing.T) {
 func TestStream_Skip(t *testing.T) {
 	defer trace("TestStream_Skip")()
 
-	t.Run("0", func(t *testing.T) {
-		defer trace("TestStream_Skip/0")()
+	for _, tc := range [...]struct {
+		dataSize int
+		skip     int
+	}{
+		{dataSize: 0, skip: 1},
+		{dataSize: 1, skip: 1},
+		{dataSize: 1000, skip: 100},
+	} {
+		var data []int
+		var want []int
 
-		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-		s = s.Filter(func(t int) bool {
-			return true
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			if i >= tc.skip {
+				want = append(want, i)
+			}
+		}
+
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Skip/serial:" + ds)()
+
+			result := Of(data...).Skip(tc.skip).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
 		})
 
-		sorted := s.Skip(0).Limit(5).
-			Sorted(func(t1, t2 int) bool {
-				return t1 < t2
-			}).ToSlice()
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Skip/parallel:" + ds)()
 
-		want := []int{6, 7, 8, 9, 10}
-		if !slices.Equal(sorted, want) {
-			t.Errorf("sorted is %v, want %v", sorted, want)
-		}
-	})
+			result := Of(data...).Parallel().Skip(tc.skip).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
 
-	t.Run("5", func(t *testing.T) {
-		defer trace("TestStream_Skip/5")()
-
-		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-		s = s.Filter(func(t int) bool {
-			return true
 		})
-
-		sorted := s.Skip(5).Limit(5).
-			Sorted(func(t1, t2 int) bool {
-				return t1 < t2
-			}).ToSlice()
-
-		want := []int{1, 2, 3, 4, 5}
-		if !slices.Equal(sorted, want) {
-			t.Errorf("sorted is %v, want %v", sorted, want)
-		}
-	})
+	}
 }
 
 func TestStream_ToSlice(t *testing.T) {
 	defer trace("TestStream_ToSlice")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	s := Of(data...)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
+		var want []int
 
-	result := s.ToSlice()
-	if !reflect.DeepEqual(result, data) {
-		t.Errorf("result is %v, want %v", result, data)
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			want = append(want, i)
+		}
+
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_ToSlice/serial:" + ds)()
+
+			result := Of(data...).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_ToSlice/serial:" + ds)()
+
+			result := Of(data...).Parallel().ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
 	}
 }
 
