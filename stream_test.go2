@@ -487,9 +487,7 @@ func TestStream_Reduce(t *testing.T) {
 		t.Run("serial", func(t *testing.T) {
 			defer trace("TestStream_Reduce/serial:" + ds)()
 
-			result := Of(data...).Reduce(0, func(t1, t2 int) int {
-				return t1 + t2
-			})
+			result := Of(data...).Reduce(0, Sum[int])
 
 			if result != want {
 				t.Errorf("result is %d, want %d", result, want)
@@ -499,9 +497,7 @@ func TestStream_Reduce(t *testing.T) {
 		t.Run("parallel", func(t *testing.T) {
 			defer trace("TestStream_Reduce/parallel:" + ds)()
 
-			result := Of(data...).Parallel().Reduce(0, func(t1, t2 int) int {
-				return t1 + t2
-			})
+			result := Of(data...).Parallel().Reduce(0, Sum[int])
 
 			if result != want {
 				t.Errorf("result is %d, want %d", result, want)
@@ -534,9 +530,7 @@ func TestStream_ReduceToOptional(t *testing.T) {
 		t.Run("serial", func(t *testing.T) {
 			defer trace("TestStream_ReduceOptional/serial:" + ds)()
 
-			result := Of(data...).ReduceToOptional(func(t1, t2 int) int {
-				return t1 + t2
-			})
+			result := Of(data...).ReduceToOptional(Sum[int])
 
 			if result.IsPresent() != tc.present {
 				t.Errorf("result.IsPresent() is %t, want %t",
@@ -551,10 +545,7 @@ func TestStream_ReduceToOptional(t *testing.T) {
 		t.Run("parallel", func(t *testing.T) {
 			defer trace("TestStream_ReduceToOptional/parallel:" + ds)()
 
-			result := Of(data...).Parallel().ReduceToOptional(
-				func(t1, t2 int) int {
-					return t1 + t2
-				})
+			result := Of(data...).Parallel().ReduceToOptional(Sum[int])
 
 			if result.IsPresent() != tc.present {
 				t.Errorf("result.IsPresent() is %t, want %t",

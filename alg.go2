@@ -1,0 +1,11 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+import (
+	"constraints"
+)
+
+func Sum[T constraints.Ordered](x, y T) T {
+	return x + y
+}
