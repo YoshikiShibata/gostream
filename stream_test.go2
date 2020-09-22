@@ -3,12 +3,14 @@
 package gostream
 
 import (
+	"math/rand"
 	"os"
 	"slices"
 	"sort"
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestStream_ForEach(t *testing.T) {
@@ -564,67 +566,129 @@ func TestStream_ReduceToOptional(t *testing.T) {
 func TestStream_Min(t *testing.T) {
 	defer trace("TestStream_Min")()
 
-	less := func(t1, t2 int) bool { return t1 < t2 }
+	rand.Seed(time.Now().Unix())
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_Min/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
+		wantSet := false
 
-		min := Of[int]().Min(less)
-		if min.IsPresent() {
-			t.Errorf("min.IsPresent() is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			r := rand.Int()
+			data = append(data, r)
+			if !wantSet {
+				want = r
+				wantSet = true
+				continue
+			}
+			if r < want {
+				want = r
+			}
 		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_Min/one")()
+		ds := strconv.Itoa(tc.dataSize)
 
-		min := Of(777).Min(less)
-		if min.Get() != 777 {
-			t.Errorf("min.Get() is %d, want 777", min.Get())
-		}
-	})
+		less := func(t1, t2 int) bool { return t1 < t2 }
 
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_Min/many")()
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Min/serial:" + ds)()
 
-		min := Of(-10, -9, 0, 1, 2, 9, 10).Min(less)
-		if min.Get() != -10 {
-			t.Errorf("min.Get() is %d, want -10", min.Get())
-		}
-	})
+			min := Of(data...).Min(less)
+			if min.IsPresent() != tc.present {
+				t.Errorf("min.IsPresent() is %t, want %t",
+					min.IsPresent(), tc.present)
+			}
+
+			if tc.present && min.Get() != want {
+				t.Errorf("min.Get() is %d, want %d", min.Get(), want)
+			}
+		})
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Min/parallel:" + ds)()
+
+			min := Of(data...).Parallel().Min(less)
+			if min.IsPresent() != tc.present {
+				t.Errorf("min.IsPresent() is %t, want %t",
+					min.IsPresent(), tc.present)
+			}
+
+			if tc.present && min.Get() != want {
+				t.Errorf("min.Get() is %d, want %d", min.Get(), want)
+			}
+		})
+	}
 }
 
 func TestStream_Max(t *testing.T) {
 	defer trace("TestStream_Max")()
 
-	less := func(t1, t2 int) bool { return t1 < t2 }
+	rand.Seed(time.Now().Unix())
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_Max/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
+		wantSet := false
 
-		min := Of[int]().Max(less)
-		if min.IsPresent() {
-			t.Errorf("min.IsPresent() is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			r := rand.Int()
+			data = append(data, r)
+			if !wantSet {
+				want = r
+				wantSet = true
+				continue
+			}
+			if r > want {
+				want = r
+			}
 		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_Max/one")()
+		ds := strconv.Itoa(tc.dataSize)
 
-		min := Of(777).Max(less)
-		if min.Get() != 777 {
-			t.Errorf("min.Get() is %d, want 777", min.Get())
-		}
-	})
+		less := func(t1, t2 int) bool { return t1 < t2 }
 
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_Max/many")()
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Max/serial:" + ds)()
 
-		min := Of(-10, -9, 0, 1, 2, 9, 10).Max(less)
-		if min.Get() != 10 {
-			t.Errorf("min.Get() is %d, want 10", min.Get())
-		}
-	})
+			max := Of(data...).Max(less)
+			if max.IsPresent() != tc.present {
+				t.Errorf("max.IsPresent() is %t, want %t",
+					max.IsPresent(), tc.present)
+			}
+
+			if tc.present && max.Get() != want {
+				t.Errorf("max.Get() is %d, want %d", max.Get(), want)
+			}
+		})
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Max/parallel:" + ds)()
+
+			max := Of(data...).Parallel().Max(less)
+			if max.IsPresent() != tc.present {
+				t.Errorf("max.IsPresent() is %t, want %t",
+					max.IsPresent(), tc.present)
+			}
+
+			if tc.present && max.Get() != want {
+				t.Errorf("max.Get() is %d, want %d", max.Get(), want)
+			}
+		})
+	}
 }
 
 func TestStream_Count(t *testing.T) {

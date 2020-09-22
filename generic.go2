@@ -512,17 +512,49 @@ func (gs *genericStream[T]) ReduceToOptional(
 func (gs *genericStream[T]) Min(less Less[T]) *Optional[T] {
 	gs.validateState()
 
+	results := make(chan *Optional[T])
+
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			foundAny := false
+			var result T
+
+			gs.terminalOp(func(t T) {
+				if !foundAny {
+					foundAny = true
+					result = t
+				} else if less(t, result) {
+					result = t
+				}
+			})
+
+			if foundAny {
+				results <- OptionalOf(result)
+			} else {
+				results <- OptionalEmpty[T]()
+			}
+		}()
+	}
+
 	foundAny := false
 	var result T
+	for i := 0; i < parallelCount; i++ {
+		oResult := <-results
+		if !oResult.IsPresent() {
+			continue
+		}
 
-	gs.terminalOp(func(t T) {
 		if !foundAny {
 			foundAny = true
-			result = t
-		} else if less(t, result) {
-			result = t
+			result = oResult.Get()
+			continue
 		}
-	})
+
+		if less(oResult.Get(), result) {
+			result = oResult.Get()
+		}
+	}
 
 	if foundAny {
 		return OptionalOf(result)
@@ -533,17 +565,49 @@ func (gs *genericStream[T]) Min(less Less[T]) *Optional[T] {
 func (gs *genericStream[T]) Max(less Less[T]) *Optional[T] {
 	gs.validateState()
 
+	results := make(chan *Optional[T])
+
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			foundAny := false
+			var result T
+
+			gs.terminalOp(func(t T) {
+				if !foundAny {
+					foundAny = true
+					result = t
+				} else if less(result, t) {
+					result = t
+				}
+			})
+
+			if foundAny {
+				results <- OptionalOf(result)
+			} else {
+				results <- OptionalEmpty[T]()
+			}
+		}()
+	}
+
 	foundAny := false
 	var result T
+	for i := 0; i < parallelCount; i++ {
+		oResult := <-results
+		if !oResult.IsPresent() {
+			continue
+		}
 
-	gs.terminalOp(func(t T) {
 		if !foundAny {
 			foundAny = true
-			result = t
-		} else if less(result, t) {
-			result = t
+			result = oResult.Get()
+			continue
 		}
-	})
+
+		if less(result, oResult.Get()) {
+			result = oResult.Get()
+		}
+	}
 
 	if foundAny {
 		return OptionalOf(result)
