@@ -1,3 +1,5 @@
+2020/09/22 ReduceToOptional() method supports parallel
+2020/09/22 Reduce() method supports parallel.
 2020/09/20 Fix Distinct() and Prallel()
 2020/09/16 Peek() method supports parallel.
 2020/09/15 Distinct() function supports parallel.

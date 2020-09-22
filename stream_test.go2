@@ -469,11 +469,10 @@ func TestStream_Reduce(t *testing.T) {
 
 	for _, tc := range [...]struct {
 		dataSize int
-		skip     int
 	}{
-		{dataSize: 0, skip: 1},
-		{dataSize: 1, skip: 1},
-		{dataSize: 1000, skip: 100},
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
 	} {
 		var data []int
 		var want int
@@ -514,43 +513,61 @@ func TestStream_Reduce(t *testing.T) {
 func TestStream_ReduceToOptional(t *testing.T) {
 	defer trace("TestStream_ReduceToOptional")()
 
-	t.Run("emtpy", func(t *testing.T) {
-		defer trace("TestStream_ReduceToOptional/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
 
-		sum := Of[int]().ReduceToOptional(func(t1, t2 int) int {
-			return t1 + t2
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			want += i
+		}
+
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_ReduceOptional/serial:" + ds)()
+
+			result := Of(data...).ReduceToOptional(func(t1, t2 int) int {
+				return t1 + t2
+			})
+
+			if result.IsPresent() != tc.present {
+				t.Errorf("result.IsPresent() is %t, want %t",
+					result.IsPresent(), tc.present)
+			}
+
+			if tc.present && result.Get() != want {
+				t.Errorf("result.Get() is %d, want %d", result.Get(), want)
+			}
 		})
-		if sum.IsPresent() {
-			t.Errorf("sum.IsPresent() is true, want false")
-		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_ReduceToOptional/one")()
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_ReduceToOptional/parallel:" + ds)()
 
-		sum := Of[int](777).ReduceToOptional(func(t1, t2 int) int {
-			return t1 + t2
+			result := Of(data...).Parallel().ReduceToOptional(
+				func(t1, t2 int) int {
+					return t1 + t2
+				})
+
+			if result.IsPresent() != tc.present {
+				t.Errorf("result.IsPresent() is %t, want %t",
+					result.IsPresent(), tc.present)
+			}
+
+			if tc.present && result.Get() != want {
+				t.Errorf("result.Get() is %d, want %d", result.Get(), want)
+			}
+
 		})
-		if sum.Get() != 777 {
-			t.Errorf("sum.Get() is %d, want 777", sum.Get())
-		}
-	})
 
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_ReduceToOptional/many")()
-
-		data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-		sum := Of(data...).ReduceToOptional(func(t1, t2 int) int {
-			return t1 + t2
-		})
-		want := 0
-		for _, d := range data {
-			want += d
-		}
-		if sum.Get() != want {
-			t.Errorf("sum is %d, want %d", sum.Get(), want)
-		}
-	})
+	}
 }
 
 func TestStream_Min(t *testing.T) {
