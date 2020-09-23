@@ -732,55 +732,51 @@ func TestStream_Count(t *testing.T) {
 func TestStream_AnyMatch(t *testing.T) {
 	defer trace("TestStream_AnyMatch")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	for _, tc := range [...]struct {
+		dataSize  int
+		matchData int
+		match     bool
+	}{
+		{dataSize: 0, matchData: 0, match: false},
+		{dataSize: 1, matchData: 0, match: true},
+		{dataSize: 1, matchData: 1, match: false},
+		{dataSize: 1000, matchData: 100, match: true},
+		{dataSize: 1000, matchData: 1000, match: false},
+	} {
+		var data []int
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/empty")()
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+		}
 
-		match := Of[int]().AnyMatch(func(t int) bool {
-			return true
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_AnyMatch/serial:" + ds)()
+
+			match := Of(data...).AnyMatch(func(t int) bool {
+				return t == tc.matchData
+			})
+
+			if match != tc.match {
+				t.Errorf("match is %t, want %t", match, tc.match)
+				t.Errorf("tc: %v", tc)
+			}
 		})
 
-		if match {
-			t.Errorf("match is true, want false")
-		}
-	})
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_AnyMatch/parallel:" + ds)()
 
-	t.Run("10", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/10")()
+			match := Of(data...).Parallel().AnyMatch(func(t int) bool {
+				return t == tc.matchData
+			})
 
-		match := Of(data...).AnyMatch(func(t int) bool {
-			return t == 10
+			if match != tc.match {
+				t.Errorf("match is %t, want %t", match, tc.match)
+				t.Errorf("tc: %v", tc)
+			}
 		})
-
-		if !match {
-			t.Errorf("match is false, want true")
-		}
-	})
-
-	t.Run("1", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/1")()
-
-		match := Of(data...).AnyMatch(func(t int) bool {
-			return t == 1
-		})
-
-		if !match {
-			t.Errorf("match is false, want true")
-		}
-	})
-
-	t.Run("99", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/99")()
-
-		match := Of(data...).AnyMatch(func(t int) bool {
-			return t == 99
-		})
-
-		if match {
-			t.Errorf("match is true, want false")
-		}
-	})
+	}
 }
 
 func TestStream_AllMatch(t *testing.T) {
