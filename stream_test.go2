@@ -694,11 +694,38 @@ func TestStream_Max(t *testing.T) {
 func TestStream_Count(t *testing.T) {
 	defer trace("TestStream_Count")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	count := Of(data...).Count()
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
 
-	if count != len(data) {
-		t.Errorf("count is %d, want %d", count, len(data))
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+		}
+
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Count/serial:" + ds)()
+
+			count := Of(data...).Count()
+			if count != tc.dataSize {
+				t.Errorf("count is %d, want %d", count, tc.dataSize)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Count/parallel:" + ds)()
+
+			count := Of(data...).Parallel().Count()
+			if count != tc.dataSize {
+				t.Errorf("count is %d, want %d", count, tc.dataSize)
+			}
+		})
 	}
 }
 

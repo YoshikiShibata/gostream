@@ -618,9 +618,21 @@ func (gs *genericStream[T]) Max(less Less[T]) *Optional[T] {
 func (gs *genericStream[T]) Count() int {
 	gs.validateState()
 
-	count := 0
+	results := make(chan int)
 
-	gs.terminalOp(func(t T) { count++ })
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			count := 0
+			gs.terminalOp(func(t T) { count++ })
+			results <- count
+		}()
+	}
+
+	count := 0
+	for i := 0; i < parallelCount; i++ {
+		count += <-results
+	}
 
 	return count
 }
