@@ -22,6 +22,8 @@ type genericStream[T any] struct {
 	parallelCount int
 	ordered       bool
 
+	terminalCloseCount int
+
 	prevReq  chan struct{}
 	prevData chan orderedData[T]
 	prevDone chan struct{}
@@ -38,6 +40,8 @@ func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 	return &genericStream[T]{
 		parallel:      gs.parallel,
 		parallelCount: gs.parallelCount,
+
+		terminalCloseCount: gs.terminalCloseCount,
 
 		prevReq:  gs.nextReq,
 		prevData: gs.nextData,
@@ -72,8 +76,8 @@ func (gs *genericStream[T]) close() {
 		return
 	}
 
-	if gs.parallelCount > 1 {
-		gs.parallelCount--
+	gs.parallelCount--
+	if gs.parallelCount > 0 {
 		return
 	}
 
@@ -87,17 +91,16 @@ func (gs *genericStream[T]) terminalClose() {
 	gs.lock.Lock()
 	defer gs.lock.Unlock()
 
-	if gs.closed {
+	if gs.terminalCloseCount == 0 {
 		return
 	}
 
-	if gs.parallelCount > 1 {
-		gs.parallelCount--
+	gs.terminalCloseCount--
+	if gs.terminalCloseCount > 0 {
 		return
 	}
 
 	close(gs.nextReq)
-	gs.closed = true
 }
 
 func (gs *genericStream[T]) getNextReq() bool {
@@ -157,8 +160,10 @@ func (gs *genericStream[T]) Parallel() Stream[T] {
 	newGS := newGenericStream(gs)
 	newGS.parallel = true
 	newGS.parallelCount = goMaxProcs
+	newGS.terminalCloseCount = goMaxProcs
 
-	for i := 0; i < newGS.parallelCount; i++ {
+	parallelCount := newGS.parallelCount
+	for i := 0; i < parallelCount; i++ {
 		go newGS.drain()
 	}
 
