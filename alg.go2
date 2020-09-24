@@ -6,6 +6,7 @@ import (
 	"constraints"
 )
 
-func Sum[T constraints.Ordered](x, y T) T {
+// Sum returns the sum of two values of some integer type.
+func Sum[T constraints.Integer](x, y T) T {
 	return x + y
 }
