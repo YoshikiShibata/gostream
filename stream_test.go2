@@ -782,55 +782,48 @@ func TestStream_AnyMatch(t *testing.T) {
 func TestStream_AllMatch(t *testing.T) {
 	defer trace("TestStream_AllMatch")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	for _, tc := range [...]struct {
+		dataSize int
+		match    bool
+	}{
+		{dataSize: 0, match: true},
+		{dataSize: 1, match: true},
+		{dataSize: 1, match: false},
+		{dataSize: 1000, match: true},
+		{dataSize: 1000, match: false},
+	} {
+		var data []int
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/empty")()
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+		}
 
-		match := Of[int]().AllMatch(func(t int) bool {
-			return false
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_AllMatch/serial:" + ds)()
+
+			match := Of(data...).AllMatch(func(t int) bool {
+				return tc.match
+			})
+
+			if match != tc.match {
+				t.Errorf("match is %t, want %t", match, tc.match)
+			}
 		})
 
-		if !match {
-			t.Errorf("match is true, want false")
-		}
-	})
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_AllMatch/parallel:" + ds)()
 
-	t.Run("allmatch", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/allmatch")()
+			match := Of(data...).Parallel().AllMatch(func(t int) bool {
+				return tc.match
+			})
 
-		match := Of(data...).AllMatch(func(t int) bool {
-			return 1 <= t && t <= 10
+			if match != tc.match {
+				t.Errorf("match is %t, want %t", match, tc.match)
+			}
 		})
-
-		if !match {
-			t.Errorf("match is false, want true")
-		}
-	})
-
-	t.Run("1", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/1")()
-
-		match := Of(data...).AllMatch(func(t int) bool {
-			return 2 <= t && t <= 10
-		})
-
-		if match {
-			t.Errorf("match is true, want false")
-		}
-	})
-
-	t.Run("10", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/10")()
-
-		match := Of(data...).AllMatch(func(t int) bool {
-			return 1 <= t && t <= 9
-		})
-
-		if match {
-			t.Errorf("match is true, want false")
-		}
-	})
+	}
 }
 
 func TestStream_NoneMatch(t *testing.T) {
