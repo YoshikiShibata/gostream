@@ -239,21 +239,11 @@ func Reduce[U, T any](
 	prevReq := s.nextReq
 	prevData := s.nextData
 
-	// parallel execution is not implemented yet.
-	// When the parallel execution is supported, then
-	// uncomment this line out.
-	//
-	// gomaxprocs := runtime.GOMAXPROCS(-1)
+	results := make(chan U)
 
-	gomaxprocs := 1
-	results := make(chan U, gomaxprocs)
-	var wg sync.WaitGroup
-	wg.Add(gomaxprocs)
-
-	for i := 0; i < gomaxprocs; i++ {
+	parallelCount := s.parallelCount
+	for i := 0; i < parallelCount; i++ {
 		go func() {
-			defer wg.Done()
-
 			result := identity
 			for {
 				prevReq <- struct{}{}
@@ -266,15 +256,15 @@ func Reduce[U, T any](
 			results <- result
 		}()
 	}
-	wg.Wait()
+
+	result := identity
+	for i := 0; i < parallelCount; i++ {
+		r := <-results
+		result = combiner(result, r)
+	}
 
 	close(prevReq)
 	close(results)
-
-	result := identity
-	for r := range results {
-		result = combiner(result, r)
-	}
 
 	return result
 }

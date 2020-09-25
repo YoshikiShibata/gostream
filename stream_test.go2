@@ -4,6 +4,7 @@ package gostream
 
 import (
 	"math/rand"
+	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -42,6 +43,7 @@ func TestStream_ForEach(t *testing.T) {
 			lock.Lock()
 			result = append(result, v)
 			lock.Unlock()
+			runtime.Gosched()
 		})
 
 		lock.Lock()
