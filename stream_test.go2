@@ -4,7 +4,6 @@ package gostream
 
 import (
 	"math/rand"
-	"os"
 	"slices"
 	"sort"
 	"strconv"
@@ -111,98 +110,6 @@ func TestStream_Filter(t *testing.T) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
 		})
-	}
-}
-
-func TestStream_Map(t *testing.T) {
-	defer trace("TestStream_Map")()
-
-	for _, tc := range [...]struct {
-		dataSize int
-	}{
-		{dataSize: 0},
-		{dataSize: 1},
-		{dataSize: 1000},
-	} {
-		var input []int
-		var want []string
-
-		for i := 0; i < tc.dataSize; i++ {
-			input = append(input, i)
-			want = append(want, strconv.Itoa(i))
-		}
-
-		ds := strconv.Itoa(tc.dataSize)
-
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Map/serial:" + ds)()
-
-			result := Map(Of(input...), strconv.Itoa).ToSlice()
-
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Map/parallel:" + ds)()
-
-			result := Map(Of(input...).Parallel(), strconv.Itoa).ToSlice()
-
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
-	}
-}
-
-func TestStream_Distinct(t *testing.T) {
-	defer trace("TestStream_Distinct")()
-
-	for _, tc := range [...]struct {
-		dataSize int
-	}{
-		{dataSize: 0},
-		{dataSize: 1},
-		{dataSize: 1000},
-	} {
-		var input []int
-		var want []int
-
-		for i := 0; i < tc.dataSize; i++ {
-			input = append(input, i, i, i)
-			want = append(want, i)
-		}
-
-		ds := strconv.Itoa(tc.dataSize)
-
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Distinct/serial:" + ds)()
-
-			result := Distinct(Of(input...)).ToSlice()
-
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
-
-		t.Run("parallel",
-			func(t *testing.T) {
-				defer trace("TestStream_Distinct/parallel:" + ds)()
-
-				result := Distinct(Of(input...).Parallel()).ToSlice()
-
-				for i := 1; i < tc.dataSize; i++ {
-					if result[i-1] > result[i] {
-						t.Errorf("result[%d] is %d, result[%d] is %d",
-							i-1, result[i-1], i, result[i])
-					}
-				}
-				if !slices.Equal(result, want) {
-					t.Errorf("result is %v, want %v", result, want)
-					os.Exit(1)
-				}
-			})
 	}
 }
 

@@ -21,27 +21,90 @@ func trace(name string) func() {
 func TestStream_MapFunc(t *testing.T) {
 	defer trace("TestStream_MapFunc")()
 
-	s := Of(1, 3, 5, 7, 9)
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var input []int
+		var want []string
 
-	result := Map(s, strconv.Itoa).ToSlice()
+		for i := 0; i < tc.dataSize; i++ {
+			input = append(input, i)
+			want = append(want, strconv.Itoa(i))
+		}
 
-	want := []string{"1", "3", "5", "7", "9"}
-	if !slices.Equal(result, want) {
-		t.Errorf("result is %v, want %v", result, want)
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_MapFunc/serial:" + ds)()
+
+			result := Map(Of(input...), strconv.Itoa).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_MapFunc/parallel:" + ds)()
+
+			result := Map(Of(input...).Parallel(), strconv.Itoa).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
 	}
 }
 
 func TestStream_DistinctFunc(t *testing.T) {
 	defer trace("TestStream_DistinctFunc")()
 
-	s := Of(1, 1, 2, 2, 3, 3, 4, 4, 5, 5,
-		6, 6, 7, 7, 8, 8, 9, 9, 10, 10)
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var input []int
+		var want []int
 
-	result := Distinct(s).ToSlice()
+		for i := 0; i < tc.dataSize; i++ {
+			input = append(input, i, i, i)
+			want = append(want, i)
+		}
 
-	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	if !slices.Equal(result, want) {
-		t.Errorf("result is %v, want %v", result, want)
+		ds := strconv.Itoa(tc.dataSize)
+
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_DistinctFunc/serial:" + ds)()
+
+			result := Distinct(Of(input...)).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_DistinctFunc/parallel:" + ds)()
+
+			result := Distinct(Of(input...).Parallel()).ToSlice()
+
+			for i := 1; i < tc.dataSize; i++ {
+				if result[i-1] > result[i] {
+					t.Errorf("result[%d] is %d, result[%d] is %d",
+						i-1, result[i-1], i, result[i])
+				}
+			}
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		})
 	}
 }
 
