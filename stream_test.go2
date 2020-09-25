@@ -890,30 +890,52 @@ func TestStream_NoneMatch(t *testing.T) {
 func TestStream_FindFirst(t *testing.T) {
 	defer trace("TestStream_FindFirst")()
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_FindFirst/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
 
-		min := Of[int]().FindFirst()
-		if min.IsPresent() {
-			t.Errorf("min.IsPresent() is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, 777-i)
 		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_FindFirst/one")()
+		ds := strconv.Itoa(tc.dataSize)
 
-		min := Of(777).FindFirst()
-		if min.Get() != 777 {
-			t.Errorf("min.Get() is %d, want 777", min.Get())
-		}
-	})
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_FindFirst/serial:" + ds)()
 
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_FindFirst/many")()
+			min := Of(data...).FindFirst()
+			if tc.dataSize == 0 {
+				if min.IsPresent() {
+					t.Errorf("min.IsPresent() is true, want false")
+				}
+				return
+			}
 
-		min := Of(-10, -9, 0, 1, 2, 9, 10).FindFirst()
-		if min.Get() != -10 {
-			t.Errorf("min.Get() is %d, want -10", min.Get())
-		}
-	})
+			if min.Get() != 777 {
+				t.Errorf("min.Get() is %d, want 777", min.Get())
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_FindFirst/parallel:" + ds)()
+
+			min := Of(data...).Parallel().FindFirst()
+			if tc.dataSize == 0 {
+				if min.IsPresent() {
+					t.Errorf("min.IsPresent() is true, want false")
+				}
+				return
+			}
+
+			if min.Get() != 777 {
+				t.Errorf("min.Get() is %d, want 777", min.Get())
+			}
+		})
+	}
+
 }

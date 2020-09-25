@@ -741,6 +741,9 @@ func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
 func (gs *genericStream[T]) FindFirst() *Optional[T] {
 	gs.validateState()
 
+	// We don't process in parallel.
+	gs.terminalCloseCount = 1
+
 	foundAny := false
 	var result T
 
