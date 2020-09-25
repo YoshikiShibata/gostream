@@ -1,3 +1,4 @@
+2020/09/26 NoneMatch() method supports parallel
 2020/09/26 AllMatch() method supports parallel
 2020/09/25 AnyMatch() method supports parallel
 2020/09/24 Count() method supports parallel

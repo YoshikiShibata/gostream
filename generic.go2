@@ -709,15 +709,31 @@ func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
 func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
 	gs.validateState()
 
-	noneMatch := true
+	results := make(chan bool)
 
-	gs.terminalOpMatch(func(t T) bool {
-		if !predicate(t) {
-			return true // continue
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			noneMatch := true
+
+			gs.terminalOpMatch(func(t T) bool {
+				if !predicate(t) {
+					return true // continue
+				}
+				noneMatch = false
+				return false
+			})
+
+			results <- noneMatch
+		}()
+	}
+
+	noneMatch := true
+	for i := 0; i < parallelCount; i++ {
+		if !(<-results) {
+			noneMatch = false
 		}
-		noneMatch = false
-		return false
-	})
+	}
 
 	return noneMatch
 }
