@@ -266,15 +266,28 @@ func TestStream_ReduceFunc(t *testing.T) {
 func TestStream_CollectFunc(t *testing.T) {
 	defer trace("TestStream_CollectFunc")()
 
-	t.Run("int", func(t *testing.T) {
-		defer trace("TestStream_CollectFunc/int")()
-
+	for _, tc := range [...]struct {
+		dataSize int
+		parallel bool
+	}{
+		{dataSize: 0, parallel: false},
+		{dataSize: 0, parallel: true},
+		{dataSize: 1, parallel: false},
+		{dataSize: 1, parallel: true},
+		{dataSize: 1000, parallel: false},
+		{dataSize: 1000, parallel: true},
+	} {
 		var data []int
-		for i := 0; i < 1000; i++ {
+		for i := 0; i < tc.dataSize; i++ {
 			data = append(data, i)
 		}
 
+		// ds := strconv.Itoa(tc.dataSize)
+
 		s := Of(data...)
+		if tc.parallel {
+			s = s.Parallel()
+		}
 
 		// Action
 		result := Collect(s,
@@ -301,7 +314,7 @@ func TestStream_CollectFunc(t *testing.T) {
 		if !slices.Equal(*result, data) {
 			t.Errorf("*result is  %v\n, want %v", *result, data)
 		}
-	})
+	}
 }
 
 func TestStream_EmptyFunc(t *testing.T) {

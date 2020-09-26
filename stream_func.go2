@@ -259,8 +259,7 @@ func Reduce[U, T any](
 
 	result := identity
 	for i := 0; i < parallelCount; i++ {
-		r := <-results
-		result = combiner(result, r)
+		result = combiner(result, <-results)
 	}
 
 	close(prevReq)
@@ -284,20 +283,11 @@ func Collect[R, T any](
 	prevReq := s.nextReq
 	prevData := s.nextData
 
-	// parallel execution is not implemented yet.
-	// When the parallel execution is supported, then
-	// uncomment this line out.
-	//
-	// gomaxprocs := runtime.GOMAXPROCS(-1)
+	results := make(chan R)
 
-	gomaxprocs := 1
-	results := make(chan R, gomaxprocs)
-	var wg sync.WaitGroup
-	wg.Add(gomaxprocs)
-
-	for i := 0; i < gomaxprocs; i++ {
+	parallelCount := s.parallelCount
+	for i := 0; i < parallelCount; i++ {
 		go func() {
-			defer wg.Done()
 
 			result := supplier()
 			for {
@@ -311,15 +301,14 @@ func Collect[R, T any](
 			results <- result
 		}()
 	}
-	wg.Wait()
+
+	result := supplier()
+	for i := 0; i < parallelCount; i++ {
+		combiner(result, <-results)
+	}
 
 	close(prevReq)
 	close(results)
-
-	result := supplier()
-	for r := range results {
-		combiner(result, r)
-	}
 
 	return result
 }
