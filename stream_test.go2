@@ -4,7 +4,6 @@ package gostream
 
 import (
 	"math/rand"
-	"runtime"
 	"slices"
 	"sort"
 	"strconv"
@@ -36,18 +35,19 @@ func TestStream_ForEach(t *testing.T) {
 	t.Run("parallel", func(t *testing.T) {
 		defer trace("TestStream_ForEach/parallel")()
 
-		var result []int
-		var lock sync.Mutex
+		resultChan := make(chan int, 1000)
 
 		Of(data...).Parallel().ForEach(func(v int) {
-			lock.Lock()
-			result = append(result, v)
-			lock.Unlock()
-			runtime.Gosched()
+			resultChan <- v
 		})
 
-		lock.Lock()
-		defer lock.Unlock()
+		close(resultChan)
+
+		var result []int
+		for v := range resultChan {
+			result = append(result, v)
+		}
+
 		if len(result) != len(data) {
 			t.Errorf("len(result) is %d, want %d",
 				len(result), len(data))
@@ -77,41 +77,30 @@ func TestStream_Filter(t *testing.T) {
 		{dataSize: 1},
 		{dataSize: 1000},
 	} {
-		var input []int
+		var data []int
 		var want []int
 
 		for i := 0; i < tc.dataSize; i++ {
-			input = append(input, i)
+			data = append(data, i)
 			if i&1 == 1 {
 				want = append(want, i)
 			}
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Filter/serial:" + ds)()
-
-			result := Of(input...).Filter(func(t int) bool {
+			result := s.Filter(func(t int) bool {
 				return t&1 == 1
 			}).ToSlice()
 
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Filter/parallel:" + ds)()
-
-			result := Of(input...).Parallel().Filter(func(t int) bool {
-				return t&1 == 1
-			}).ToSlice()
-
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
+		}
 	}
 }
 
@@ -133,31 +122,20 @@ func TestStream_Sorted(t *testing.T) {
 			want = append(want, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Sorted/serial:" + ds)()
-
-			result := Of(data...).Sorted(func(t1, t2 int) bool {
+			result := s.Sorted(func(t1, t2 int) bool {
 				return t1 < t2
 			}).ToSlice()
 
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Sorted/parallel:" + ds)()
-
-			result := Of(data...).Parallel().Sorted(func(t1, t2 int) bool {
-				return t1 < t2
-			}).ToSlice()
-
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
+		}
 	}
 }
 
@@ -269,25 +247,17 @@ func TestStream_Limit(t *testing.T) {
 			}
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Limit/serial:" + ds)()
-
-			result := Of(data...).Limit(tc.limit).ToSlice()
+			result := s.Limit(tc.limit).ToSlice()
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Limit/parallel:" + ds)()
-
-			result := Of(data...).Parallel().Limit(tc.limit).ToSlice()
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
+		}
 	}
 }
 
@@ -312,26 +282,17 @@ func TestStream_Skip(t *testing.T) {
 			}
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Skip/serial:" + ds)()
-
-			result := Of(data...).Skip(tc.skip).ToSlice()
+			result := s.Skip(tc.skip).ToSlice()
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Skip/parallel:" + ds)()
-
-			result := Of(data...).Parallel().Skip(tc.skip).ToSlice()
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-
-		})
+		}
 	}
 }
 
@@ -353,25 +314,17 @@ func TestStream_ToSlice(t *testing.T) {
 			want = append(want, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_ToSlice/serial:" + ds)()
-
-			result := Of(data...).ToSlice()
+			result := s.ToSlice()
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_ToSlice/serial:" + ds)()
-
-			result := Of(data...).Parallel().ToSlice()
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
+		}
 	}
 }
 
@@ -393,27 +346,18 @@ func TestStream_Reduce(t *testing.T) {
 			want += i
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
-
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Reduce/serial:" + ds)()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
 			result := Of(data...).Reduce(0, Sum[int])
 
 			if result != want {
 				t.Errorf("result is %d, want %d", result, want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Reduce/parallel:" + ds)()
-
-			result := Of(data...).Parallel().Reduce(0, Sum[int])
-
-			if result != want {
-				t.Errorf("result is %d, want %d", result, want)
-			}
-		})
+		}
 	}
 }
 
@@ -436,12 +380,13 @@ func TestStream_ReduceToOptional(t *testing.T) {
 			want += i
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_ReduceOptional/serial:" + ds)()
-
-			result := Of(data...).ReduceToOptional(Sum[int])
+			result := s.ReduceToOptional(Sum[int])
 
 			if result.IsPresent() != tc.present {
 				t.Errorf("result.IsPresent() is %t, want %t",
@@ -451,23 +396,7 @@ func TestStream_ReduceToOptional(t *testing.T) {
 			if tc.present && result.Get() != want {
 				t.Errorf("result.Get() is %d, want %d", result.Get(), want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_ReduceToOptional/parallel:" + ds)()
-
-			result := Of(data...).Parallel().ReduceToOptional(Sum[int])
-
-			if result.IsPresent() != tc.present {
-				t.Errorf("result.IsPresent() is %t, want %t",
-					result.IsPresent(), tc.present)
-			}
-
-			if tc.present && result.Get() != want {
-				t.Errorf("result.Get() is %d, want %d", result.Get(), want)
-			}
-
-		})
+		}
 
 	}
 }
@@ -502,14 +431,15 @@ func TestStream_Min(t *testing.T) {
 			}
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
-
 		less := func(t1, t2 int) bool { return t1 < t2 }
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Min/serial:" + ds)()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-			min := Of(data...).Min(less)
+			min := s.Min(less)
 			if min.IsPresent() != tc.present {
 				t.Errorf("min.IsPresent() is %t, want %t",
 					min.IsPresent(), tc.present)
@@ -518,21 +448,7 @@ func TestStream_Min(t *testing.T) {
 			if tc.present && min.Get() != want {
 				t.Errorf("min.Get() is %d, want %d", min.Get(), want)
 			}
-		})
-
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Min/parallel:" + ds)()
-
-			min := Of(data...).Parallel().Min(less)
-			if min.IsPresent() != tc.present {
-				t.Errorf("min.IsPresent() is %t, want %t",
-					min.IsPresent(), tc.present)
-			}
-
-			if tc.present && min.Get() != want {
-				t.Errorf("min.Get() is %d, want %d", min.Get(), want)
-			}
-		})
+		}
 	}
 }
 
@@ -566,14 +482,15 @@ func TestStream_Max(t *testing.T) {
 			}
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
-
 		less := func(t1, t2 int) bool { return t1 < t2 }
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Max/serial:" + ds)()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-			max := Of(data...).Max(less)
+			max := s.Max(less)
 			if max.IsPresent() != tc.present {
 				t.Errorf("max.IsPresent() is %t, want %t",
 					max.IsPresent(), tc.present)
@@ -582,21 +499,7 @@ func TestStream_Max(t *testing.T) {
 			if tc.present && max.Get() != want {
 				t.Errorf("max.Get() is %d, want %d", max.Get(), want)
 			}
-		})
-
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Max/parallel:" + ds)()
-
-			max := Of(data...).Parallel().Max(less)
-			if max.IsPresent() != tc.present {
-				t.Errorf("max.IsPresent() is %t, want %t",
-					max.IsPresent(), tc.present)
-			}
-
-			if tc.present && max.Get() != want {
-				t.Errorf("max.Get() is %d, want %d", max.Get(), want)
-			}
-		})
+		}
 	}
 }
 
@@ -616,25 +519,17 @@ func TestStream_Count(t *testing.T) {
 			data = append(data, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Count/serial:" + ds)()
-
-			count := Of(data...).Count()
+			count := s.Count()
 			if count != tc.dataSize {
 				t.Errorf("count is %d, want %d", count, tc.dataSize)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Count/parallel:" + ds)()
-
-			count := Of(data...).Parallel().Count()
-			if count != tc.dataSize {
-				t.Errorf("count is %d, want %d", count, tc.dataSize)
-			}
-		})
+		}
 	}
 }
 
@@ -658,12 +553,13 @@ func TestStream_AnyMatch(t *testing.T) {
 			data = append(data, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_AnyMatch/serial:" + ds)()
-
-			match := Of(data...).AnyMatch(func(t int) bool {
+			match := s.AnyMatch(func(t int) bool {
 				return t == tc.matchData
 			})
 
@@ -671,20 +567,7 @@ func TestStream_AnyMatch(t *testing.T) {
 				t.Errorf("match is %t, want %t", match, tc.match)
 				t.Errorf("tc: %v", tc)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_AnyMatch/parallel:" + ds)()
-
-			match := Of(data...).Parallel().AnyMatch(func(t int) bool {
-				return t == tc.matchData
-			})
-
-			if match != tc.match {
-				t.Errorf("match is %t, want %t", match, tc.match)
-				t.Errorf("tc: %v", tc)
-			}
-		})
+		}
 	}
 }
 
@@ -707,31 +590,20 @@ func TestStream_AllMatch(t *testing.T) {
 			data = append(data, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_AllMatch/serial:" + ds)()
-
-			match := Of(data...).AllMatch(func(t int) bool {
+			match := s.AllMatch(func(t int) bool {
 				return tc.match
 			})
 
 			if match != tc.match {
 				t.Errorf("match is %t, want %t", match, tc.match)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_AllMatch/parallel:" + ds)()
-
-			match := Of(data...).Parallel().AllMatch(func(t int) bool {
-				return tc.match
-			})
-
-			if match != tc.match {
-				t.Errorf("match is %t, want %t", match, tc.match)
-			}
-		})
+		}
 	}
 }
 
@@ -754,12 +626,13 @@ func TestStream_NoneMatch(t *testing.T) {
 			data = append(data, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_NoneMatch/serial:" + ds)()
-
-			noneMatch := Of(data...).NoneMatch(func(t int) bool {
+			noneMatch := s.NoneMatch(func(t int) bool {
 				return tc.match
 			})
 
@@ -767,32 +640,13 @@ func TestStream_NoneMatch(t *testing.T) {
 				if !noneMatch {
 					t.Errorf("noneMatch is false, want true")
 				}
-				return
+				continue
 			}
 
 			if noneMatch == tc.match {
 				t.Errorf("noneMatch is %t, want %t", noneMatch, !tc.match)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_NoneMatch/parallel:" + ds)()
-
-			noneMatch := Of(data...).Parallel().NoneMatch(func(t int) bool {
-				return tc.match
-			})
-
-			if tc.dataSize == 0 {
-				if !noneMatch {
-					t.Errorf("noneMatch is false, want true")
-				}
-				return
-			}
-
-			if noneMatch == tc.match {
-				t.Errorf("noneMatch is %t, want %t", noneMatch, !tc.match)
-			}
-		})
+		}
 	}
 }
 
@@ -812,39 +666,23 @@ func TestStream_FindFirst(t *testing.T) {
 			data = append(data, 777-i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_FindFirst/serial:" + ds)()
-
-			min := Of(data...).FindFirst()
+			min := s.FindFirst()
 			if tc.dataSize == 0 {
 				if min.IsPresent() {
 					t.Errorf("min.IsPresent() is true, want false")
 				}
-				return
+				continue
 			}
 
 			if min.Get() != 777 {
 				t.Errorf("min.Get() is %d, want 777", min.Get())
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_FindFirst/parallel:" + ds)()
-
-			min := Of(data...).Parallel().FindFirst()
-			if tc.dataSize == 0 {
-				if min.IsPresent() {
-					t.Errorf("min.IsPresent() is true, want false")
-				}
-				return
-			}
-
-			if min.Get() != 777 {
-				t.Errorf("min.Get() is %d, want 777", min.Get())
-			}
-		})
+		}
 	}
-
 }
