@@ -28,35 +28,26 @@ func TestStream_MapFunc(t *testing.T) {
 		{dataSize: 1},
 		{dataSize: 1000},
 	} {
-		var input []int
+		var data []int
 		var want []string
 
 		for i := 0; i < tc.dataSize; i++ {
-			input = append(input, i)
+			data = append(data, i)
 			want = append(want, strconv.Itoa(i))
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_MapFunc/serial:" + ds)()
-
-			result := Map(Of(input...), strconv.Itoa).ToSlice()
+			result := Map(s, strconv.Itoa).ToSlice()
 
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_MapFunc/parallel:" + ds)()
-
-			result := Map(Of(input...).Parallel(), strconv.Itoa).ToSlice()
-
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
+		}
 	}
 }
 
@@ -70,41 +61,26 @@ func TestStream_DistinctFunc(t *testing.T) {
 		{dataSize: 1},
 		{dataSize: 1000},
 	} {
-		var input []int
+		var data []int
 		var want []int
 
 		for i := 0; i < tc.dataSize; i++ {
-			input = append(input, i, i, i)
+			data = append(data, i, i, i)
 			want = append(want, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_DistinctFunc/serial:" + ds)()
-
-			result := Distinct(Of(input...)).ToSlice()
+			result := Distinct(s).ToSlice()
 
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_DistinctFunc/parallel:" + ds)()
-
-			result := Distinct(Of(input...).Parallel()).ToSlice()
-
-			for i := 1; i < tc.dataSize; i++ {
-				if result[i-1] > result[i] {
-					t.Errorf("result[%d] is %d, result[%d] is %d",
-						i-1, result[i-1], i, result[i])
-				}
-			}
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-		})
+		}
 	}
 }
 
@@ -126,26 +102,17 @@ func TestStream_SortedFunc(t *testing.T) {
 			want = append(want, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_SortedFunc/serial:" + ds)()
-
-			result := Sorted(Of(data...)).ToSlice()
+			result := Sorted(s).ToSlice()
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
-		})
-
-		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_SortedFunc/parallel:" + ds)()
-
-			result := Sorted(Of(data...).Parallel()).ToSlice()
-			if !slices.Equal(result, want) {
-				t.Errorf("result is %v, want %v", result, want)
-			}
-
-		})
+		}
 	}
 }
 
@@ -169,12 +136,13 @@ func TestStream_ReduceFunc(t *testing.T) {
 				wantSum += i
 			}
 
-			ds := strconv.Itoa(tc.dataSize)
+			for _, parallel := range [...]bool{false, true} {
+				s := Of(data...)
+				if parallel {
+					s = s.Parallel()
+				}
 
-			t.Run("serial", func(t *testing.T) {
-				defer trace("TestStream_ReduceFunc/int/serial:" + ds)()
-
-				sum := Reduce(Of(data...),
+				sum := Reduce(s,
 					0,                                   // identity
 					func(u, t int) int { return u + t }, // accumulator
 					func(u, t int) int { return u + t }, // combiner
@@ -183,21 +151,7 @@ func TestStream_ReduceFunc(t *testing.T) {
 				if sum != wantSum {
 					t.Errorf("sum is %d, want %d", sum, wantSum)
 				}
-			})
-
-			t.Run("parallel", func(t *testing.T) {
-				defer trace("TestStream_ReduceFunc/int/parallel:" + ds)()
-
-				sum := Reduce(Of(data...).Parallel(),
-					0,                                   // identity
-					func(u, t int) int { return u + t }, // accumulator
-					func(u, t int) int { return u + t }, // combiner
-				)
-
-				if sum != wantSum {
-					t.Errorf("sum is %d, want %d", sum, wantSum)
-				}
-			})
+			}
 		}
 	})
 
@@ -218,12 +172,13 @@ func TestStream_ReduceFunc(t *testing.T) {
 				wantSum += i
 			}
 
-			ds := strconv.Itoa(tc.dataSize)
+			for _, parallel := range [...]bool{false, true} {
+				s := Of(data...)
+				if parallel {
+					s = s.Parallel()
+				}
 
-			t.Run("serial", func(t *testing.T) {
-				defer trace("TestStream_ReduceFunc/string/serial:" + ds)()
-
-				sum := Reduce(Of(data...),
+				sum := Reduce(s,
 					0, // identity
 					func(u int, t string) int {
 						tVal, err := strconv.Atoi(t)
@@ -238,27 +193,7 @@ func TestStream_ReduceFunc(t *testing.T) {
 				if sum != wantSum {
 					t.Errorf("sum is %d, want %d", sum, wantSum)
 				}
-			})
-
-			t.Run("parallel", func(t *testing.T) {
-				defer trace("TestStream_ReduceFunc/string/parallel:" + ds)()
-
-				sum := Reduce(Of(data...).Parallel(),
-					0, // identity
-					func(u int, t string) int {
-						tVal, err := strconv.Atoi(t)
-						if err != nil {
-							panic(fmt.Sprintf("strconv.Atoi(%q) failed: %v", t, err))
-						}
-						return u + tVal
-					}, // accumulator
-					func(u, t int) int { return u + t }, // combiner
-				)
-
-				if sum != wantSum {
-					t.Errorf("sum is %d, want %d", sum, wantSum)
-				}
-			})
+			}
 		}
 	})
 }
@@ -268,14 +203,13 @@ func TestStream_CollectFunc(t *testing.T) {
 
 	for _, tc := range [...]struct {
 		dataSize int
-		parallel bool
 	}{
-		{dataSize: 0, parallel: false},
-		{dataSize: 0, parallel: true},
-		{dataSize: 1, parallel: false},
-		{dataSize: 1, parallel: true},
-		{dataSize: 1000, parallel: false},
-		{dataSize: 1000, parallel: true},
+		{dataSize: 0},
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1},
+		{dataSize: 1000},
+		{dataSize: 1000},
 	} {
 		var data []int
 		for i := 0; i < tc.dataSize; i++ {
@@ -284,35 +218,37 @@ func TestStream_CollectFunc(t *testing.T) {
 
 		// ds := strconv.Itoa(tc.dataSize)
 
-		s := Of(data...)
-		if tc.parallel {
-			s = s.Parallel()
-		}
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		// Action
-		result := Collect(s,
-			func() *[]int { // supplier
-				return &[]int{}
-			},
-			func(r *[]int, t int) { // accumulator
-				*r = append(*r, t)
-			},
-			func(r1, r2 *[]int) { // combiner
-				*r1 = append(*r1, *r2...)
-			},
-		)
+			// Action
+			result := Collect(s,
+				func() *[]int { // supplier
+					return &[]int{}
+				},
+				func(r *[]int, t int) { // accumulator
+					*r = append(*r, t)
+				},
+				func(r1, r2 *[]int) { // combiner
+					*r1 = append(*r1, *r2...)
+				},
+			)
 
-		// Check
-		if len(*result) != len(data) {
-			t.Fatalf("len(*result) is %d, want %d", len(*result), len(data))
-		}
+			// Check
+			if len(*result) != len(data) {
+				t.Fatalf("len(*result) is %d, want %d", len(*result), len(data))
+			}
 
-		sort.Slice(*result, func(i, j int) bool {
-			return (*result)[i] < (*result)[j]
-		})
+			sort.Slice(*result, func(i, j int) bool {
+				return (*result)[i] < (*result)[j]
+			})
 
-		if !slices.Equal(*result, data) {
-			t.Errorf("*result is  %v\n, want %v", *result, data)
+			if !slices.Equal(*result, data) {
+				t.Errorf("*result is  %v\n, want %v", *result, data)
+			}
 		}
 	}
 }
@@ -320,13 +256,20 @@ func TestStream_CollectFunc(t *testing.T) {
 func TestStream_EmptyFunc(t *testing.T) {
 	defer trace("TestStream_EmptyFunc")()
 
-	count := 0
-	Empty[int]().ForEach(func(t int) {
-		count++
-	})
+	for _, parallel := range [...]bool{false, true} {
+		count := 0
+		s := Empty[int]()
+		if parallel {
+			s = s.Parallel()
+		}
 
-	if count > 0 {
-		t.Errorf("count is %d, want 0", count)
+		s.ForEach(func(t int) {
+			count++
+		})
+
+		if count > 0 {
+			t.Errorf("count is %d, want 0", count)
+		}
 	}
 }
 

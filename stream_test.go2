@@ -7,7 +7,6 @@ import (
 	"slices"
 	"sort"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 )
@@ -164,12 +163,9 @@ func TestStream_Peek(t *testing.T) {
 
 			s := Of(data...)
 
-			var lock sync.Mutex
-			var peeked []int
+			peekedChan := make(chan int, tc.dataSize)
 			peekFunc := func(t int) {
-				lock.Lock()
-				peeked = append(peeked, t)
-				lock.Unlock()
+				peekedChan <- t
 			}
 
 			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
@@ -179,8 +175,11 @@ func TestStream_Peek(t *testing.T) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
 
-			lock.Lock()
-			defer lock.Unlock()
+			close(peekedChan)
+			var peeked []int
+			for v := range peekedChan {
+				peeked = append(peeked, v)
+			}
 
 			if !slices.Equal(peeked, data) {
 				t.Errorf("peeked is %v, want %v", peeked, data)
@@ -192,23 +191,24 @@ func TestStream_Peek(t *testing.T) {
 
 			s := Of(data...).Parallel()
 
-			var lock sync.Mutex
-			var peeked []int
+			peekedChan := make(chan int, tc.dataSize)
 			peekFunc := func(t int) {
-				lock.Lock()
-				peeked = append(peeked, t)
-				lock.Unlock()
+				peekedChan <- t
 			}
 
 			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
 				return t1 < t2
 			}).ToSlice()
+
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}
 
-			lock.Lock()
-			defer lock.Unlock()
+			close(peekedChan)
+			var peeked []int
+			for v := range peekedChan {
+				peeked = append(peeked, v)
+			}
 
 			if tc.dataSize != 0 && tc.dataSize != 1 && goMaxProcs != 1 {
 				if slices.Equal(peeked, data) {
@@ -216,6 +216,7 @@ func TestStream_Peek(t *testing.T) {
 					t.Errorf("peeked is identical to data")
 				}
 			}
+
 			sort.Slice(peeked, func(i, j int) bool {
 				return peeked[i] < peeked[j]
 			})
