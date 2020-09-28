@@ -216,8 +216,6 @@ func TestStream_CollectFunc(t *testing.T) {
 			data = append(data, i)
 		}
 
-		// ds := strconv.Itoa(tc.dataSize)
-
 		for _, parallel := range [...]bool{false, true} {
 			s := Of(data...)
 			if parallel {
@@ -349,18 +347,43 @@ func TestStream_GenerateFunc(t *testing.T) {
 
 func TestStream_ConcatFunc(t *testing.T) {
 	defer trace("TestStream_ConcatFunc")()
-
-	a := Iterate[int](1, func(v int) int { return v + 1 }).Limit(100)
-	b := Iterate[int](101, func(v int) int { return v + 1 }).Limit(100)
-	value := 1
-	Concat(a, b).ForEach(func(v int) {
-		if v != value {
-			t.Fatalf("v is %d, want %d", v, value)
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1},
+		{dataSize: 100},
+		{dataSize: 100},
+	} {
+		var dataA []int
+		var dataB []int
+		for i := 0; i < tc.dataSize; i++ {
+			dataA = append(dataA, i)
+			dataB = append(dataB, i+tc.dataSize)
 		}
-		value++
-	})
-	if value != 201 {
-		t.Errorf("value is %d, want 201", value)
+		var want []int
+		want = append(want, dataA...)
+		want = append(want, dataB...)
+
+		for _, parallel := range [...]bool{false, true} {
+			a := Of(dataA...)
+			b := Of(dataB...)
+			if parallel {
+				a = a.Parallel()
+				b = b.Parallel()
+			}
+
+			fmt.Println()
+			debug = true
+			result := Concat(a, b).ToSlice()
+			debug = false
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		}
+
 	}
 }
 

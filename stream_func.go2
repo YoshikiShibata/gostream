@@ -4,6 +4,7 @@ package gostream
 
 import (
 	"constraints"
+	"fmt"
 	"sort"
 	"sync"
 )
@@ -492,6 +493,7 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 				}
 			}
 			gs.nextData <- data
+			fmt.Printf("%v ", data)
 		}
 		gs.close()
 	}()
