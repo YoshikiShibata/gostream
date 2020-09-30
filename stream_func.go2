@@ -4,7 +4,6 @@ package gostream
 
 import (
 	"constraints"
-	"fmt"
 	"sort"
 	"sync"
 )
@@ -80,6 +79,9 @@ func FlatMap[T, R any](
 
 	var rgs *genericStream[R]
 
+	offset := uint64(0)
+	lastOrder := uint64(0)
+
 	go func() {
 		for range nextReq {
 			for {
@@ -105,14 +107,20 @@ func FlatMap[T, R any](
 				if !ok {
 					close(rgs.nextReq)
 					rgs = nil
+					offset += lastOrder + 1
 				} else {
-					nextData <- r
+					lastOrder = r.order
+					nextData <- orderedData[R]{
+						order: r.order + offset,
+						data:  r.data,
+					}
 					break
 				}
 			}
 		}
 	}()
 
+	// Always return non-parallel stream
 	return &genericStream[R]{
 		parallelCount: 1,
 		nextReq:       nextReq,
@@ -463,6 +471,7 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 	ags.validateState()
 	bgs.validateState()
 
+	// The concatenated stream is always not parallel.
 	gs := &genericStream[T]{
 		parallelCount: 1,
 		nextReq:       make(chan struct{}),
@@ -473,6 +482,9 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 		gs.prevReq = ags.nextReq
 		gs.prevData = ags.nextData
 		switchedToB := false
+
+		offset := uint64(0)
+		lastOrder := uint64(0)
 
 		for range gs.nextReq {
 			data, ok := gs.getPrevData()
@@ -485,6 +497,7 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 				gs.prevReq = bgs.nextReq
 				gs.prevData = bgs.nextData
 				switchedToB = true
+				offset = lastOrder + 1
 
 				data, ok = gs.getPrevData()
 				if !ok {
@@ -492,8 +505,11 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 					return
 				}
 			}
-			gs.nextData <- data
-			fmt.Printf("%v ", data)
+			lastOrder = data.order
+			gs.nextData <- orderedData[T]{
+				order: data.order + offset,
+				data:  data.data,
+			}
 		}
 		gs.close()
 	}()

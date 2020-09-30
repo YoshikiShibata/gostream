@@ -389,17 +389,7 @@ func (gs *genericStream[T]) skip(n int) {
 }
 
 func (gs *genericStream[T]) ToSlice() []T {
-	defer trace("ToSlice")()
-
 	gs.validateState()
-
-	if !gs.parallel {
-		var result []T
-		gs.terminalOp(func(t T) {
-			result = append(result, t)
-		})
-		return result
-	}
 
 	results := make(chan []orderedData[T])
 
@@ -425,19 +415,10 @@ func (gs *genericStream[T]) ToSlice() []T {
 	}
 	close(results)
 
-	fmt.Printf("debug = %t\n", debug)
-	if debug {
-		fmt.Printf("ToSlice: ods = %v\n", ods)
-	}
-
 	// sort
 	sort.Slice(ods, func(i, j int) bool {
 		return ods[i].order < ods[j].order
 	})
-
-	if debug {
-		fmt.Printf("ToSlice: sorted ods = %v\n", ods)
-	}
 
 	// copy sorted result to []T
 	result := make([]T, len(ods))

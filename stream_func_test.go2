@@ -375,10 +375,7 @@ func TestStream_ConcatFunc(t *testing.T) {
 				b = b.Parallel()
 			}
 
-			fmt.Println()
-			debug = true
 			result := Concat(a, b).ToSlice()
-			debug = false
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
 			}

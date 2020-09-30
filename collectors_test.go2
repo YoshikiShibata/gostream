@@ -16,14 +16,10 @@ func TestCollectors_ToSliceCollector(t *testing.T) {
 
 	for _, tc := range [...]struct {
 		dataSize int
-		parallel bool
 	}{
-		{dataSize: 0, parallel: false},
-		{dataSize: 0, parallel: true},
-		{dataSize: 1, parallel: false},
-		{dataSize: 1, parallel: true},
-		{dataSize: 1000, parallel: false},
-		{dataSize: 1000, parallel: true},
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
 	} {
 
 		var data []int
@@ -33,19 +29,21 @@ func TestCollectors_ToSliceCollector(t *testing.T) {
 			want = append(want, i)
 		}
 
-		s := Of(data...)
-		if tc.parallel {
-			s = s.Parallel()
-		}
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		result := CollectByCollector(s, ToSliceCollector[int]())
-		if tc.parallel {
-			sort.Slice(result, func(i, j int) bool {
-				return result[i] < result[j]
-			})
-		}
-		if !slices.Equal(result, data) {
-			t.Errorf("result is %v, want %v", result, data)
+			result := CollectByCollector(s, ToSliceCollector[int]())
+			if parallel {
+				sort.Slice(result, func(i, j int) bool {
+					return result[i] < result[j]
+				})
+			}
+			if !slices.Equal(result, data) {
+				t.Errorf("result is %v, want %v", result, data)
+			}
 		}
 	}
 }
