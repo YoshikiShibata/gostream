@@ -53,14 +53,10 @@ func TestCollectors_ToSetCollector(t *testing.T) {
 
 	for _, tc := range [...]struct {
 		dataSize int
-		parallel bool
 	}{
-		{dataSize: 0, parallel: false},
-		{dataSize: 0, parallel: true},
-		{dataSize: 1, parallel: false},
-		{dataSize: 1, parallel: true},
-		{dataSize: 1000, parallel: false},
-		{dataSize: 1000, parallel: true},
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
 	} {
 
 		var data []int
@@ -70,18 +66,20 @@ func TestCollectors_ToSetCollector(t *testing.T) {
 			want[i] = true
 		}
 
-		s := Of(data...)
-		if tc.parallel {
-			s = s.Parallel()
-		}
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		result := CollectByCollector(s, ToSetCollector[int]())
-		if len(result) != tc.dataSize {
-			t.Errorf("len(result) is %d, want %d", len(result), tc.dataSize)
-		}
-		for i := 0; i < tc.dataSize; i++ {
-			if !result[i] {
-				t.Errorf("result[%d] is false, want true", i)
+			result := CollectByCollector(s, ToSetCollector[int]())
+			if len(result) != tc.dataSize {
+				t.Errorf("len(result) is %d, want %d", len(result), tc.dataSize)
+			}
+			for i := 0; i < tc.dataSize; i++ {
+				if !result[i] {
+					t.Errorf("result[%d] is false, want true", i)
+				}
 			}
 		}
 
