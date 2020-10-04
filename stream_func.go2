@@ -15,29 +15,52 @@ func Map[T, R any](stream Stream[T], mapper Function[T, R]) Stream[R] {
 	gs.validateState()
 
 	nextReq := make(chan struct{})
-	nextData := make(chan R)
+	nextData := make(chan orderedData[R])
 
-	go func() {
-		for range nextReq {
-			gs.nextReq <- struct{}{}
-			t, ok := <-gs.nextData
-			if !ok {
-				close(nextData)
-				close(gs.nextReq)
-				go func() {
-					for range nextReq {
-					}
-				}()
-				return
-			}
-			r := mapper(t)
-			nextData <- r
+	closeCounter := gs.parallelCount
+	var lock sync.Mutex
+
+	closeChans := func() {
+		lock.Lock()
+		defer lock.Unlock()
+
+		if closeCounter > 1 {
+			closeCounter--
+			return
 		}
-	}()
+
+		close(nextData)
+		close(gs.nextReq)
+		go func() {
+			for range nextReq {
+			}
+		}()
+	}
+
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			for range nextReq {
+				gs.nextReq <- struct{}{}
+				od, ok := <-gs.nextData
+				if !ok {
+					closeChans()
+					return
+				}
+				r := mapper(od.data)
+				nextData <- orderedData[R]{
+					order: od.order,
+					data:  r,
+				}
+			}
+		}()
+	}
 
 	return &genericStream[R]{
-		nextReq:  nextReq,
-		nextData: nextData,
+		parallel:      gs.parallel,
+		parallelCount: parallelCount,
+		nextReq:       nextReq,
+		nextData:      nextData,
 	}
 }
 
@@ -52,16 +75,19 @@ func FlatMap[T, R any](
 	gs.validateState()
 
 	nextReq := make(chan struct{})
-	nextData := make(chan R)
+	nextData := make(chan orderedData[R])
 
 	var rgs *genericStream[R]
+
+	offset := uint64(0)
+	lastOrder := uint64(0)
 
 	go func() {
 		for range nextReq {
 			for {
 				if rgs == nil {
 					gs.nextReq <- struct{}{}
-					t, ok := <-gs.nextData
+					od, ok := <-gs.nextData
 					if !ok {
 						close(nextData)
 						close(gs.nextReq)
@@ -72,7 +98,7 @@ func FlatMap[T, R any](
 						return
 					}
 
-					r := mapper(t)
+					r := mapper(od.data)
 					rgs = r.(*genericStream[R])
 				}
 
@@ -81,17 +107,24 @@ func FlatMap[T, R any](
 				if !ok {
 					close(rgs.nextReq)
 					rgs = nil
+					offset += lastOrder + 1
 				} else {
-					nextData <- r
+					lastOrder = r.order
+					nextData <- orderedData[R]{
+						order: r.order + offset,
+						data:  r.data,
+					}
 					break
 				}
 			}
 		}
 	}()
 
+	// Always return non-parallel stream
 	return &genericStream[R]{
-		nextReq:  nextReq,
-		nextData: nextData,
+		parallelCount: 1,
+		nextReq:       nextReq,
+		nextData:      nextData,
 	}
 }
 
@@ -99,13 +132,15 @@ func FlatMap[T, R any](
 // values.
 func Of[T any](data ...T) Stream[T] {
 	nextReq := make(chan struct{})
-	nextData := make(chan T)
+	nextData := make(chan orderedData[T])
+	prevDone := make(chan struct{})
 
 	go func() {
 		i := 0
 		for range nextReq {
 			if i == len(data) {
 				close(nextData)
+				close(prevDone)
 				go func() {
 					for range nextReq {
 					}
@@ -113,16 +148,22 @@ func Of[T any](data ...T) Stream[T] {
 				return
 			}
 			if i < len(data) {
-				nextData <- data[i]
+				nextData <- orderedData[T]{
+					order: uint64(i),
+					data:  data[i],
+				}
 				i++
 			}
 		}
 		close(nextData)
+		close(prevDone)
 	}()
 
 	return &genericStream[T]{
-		nextReq:  nextReq,
-		nextData: nextData,
+		parallelCount: 1,
+		prevDone:      prevDone,
+		nextReq:       nextReq,
+		nextData:      nextData,
 	}
 }
 
@@ -133,31 +174,32 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 	s.validateState()
 
 	gs := &genericStream[T]{
-		prevReq:  s.nextReq,
-		prevData: s.nextData,
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		parallelCount: 1,
+		prevReq:       s.nextReq,
+		prevData:      s.nextData,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
 		seen := make(map[T]bool)
 
 		for range gs.nextReq {
-			data, ok := gs.getPrevData()
+			od, ok := gs.getPrevData()
 			if !ok {
 				gs.close()
 				return
 			}
 
-			for seen[data] {
-				data, ok = gs.getPrevData()
+			for seen[od.data] {
+				od, ok = gs.getPrevData()
 				if !ok {
 					gs.close()
 					return
 				}
 			}
-			gs.nextData <- data
-			seen[data] = true
+			gs.nextData <- od
+			seen[od.data] = true
 		}
 		gs.close()
 	}()
@@ -177,11 +219,11 @@ func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
 	var dataSlice []T
 	for {
 		prevReq <- struct{}{}
-		data, ok := <-prevData
+		od, ok := <-prevData
 		if !ok {
 			break
 		}
-		dataSlice = append(dataSlice, data)
+		dataSlice = append(dataSlice, od.data)
 	}
 	close(prevReq)
 
@@ -206,42 +248,31 @@ func Reduce[U, T any](
 	prevReq := s.nextReq
 	prevData := s.nextData
 
-	// parallel execution is not implemented yet.
-	// When the parallel execution is supported, then
-	// uncomment this line out.
-	//
-	// gomaxprocs := runtime.GOMAXPROCS(-1)
+	results := make(chan U)
 
-	gomaxprocs := 1
-	results := make(chan U, gomaxprocs)
-	var wg sync.WaitGroup
-	wg.Add(gomaxprocs)
-
-	for i := 0; i < gomaxprocs; i++ {
+	parallelCount := s.parallelCount
+	for i := 0; i < parallelCount; i++ {
 		go func() {
-			defer wg.Done()
-
 			result := identity
 			for {
 				prevReq <- struct{}{}
-				data, ok := <-prevData
+				od, ok := <-prevData
 				if !ok {
 					break
 				}
-				result = accumulator(result, data)
+				result = accumulator(result, od.data)
 			}
 			results <- result
 		}()
 	}
-	wg.Wait()
+
+	result := identity
+	for i := 0; i < parallelCount; i++ {
+		result = combiner(result, <-results)
+	}
 
 	close(prevReq)
 	close(results)
-
-	result := identity
-	for r := range results {
-		result = combiner(result, r)
-	}
 
 	return result
 }
@@ -261,42 +292,32 @@ func Collect[R, T any](
 	prevReq := s.nextReq
 	prevData := s.nextData
 
-	// parallel execution is not implemented yet.
-	// When the parallel execution is supported, then
-	// uncomment this line out.
-	//
-	// gomaxprocs := runtime.GOMAXPROCS(-1)
+	results := make(chan R)
 
-	gomaxprocs := 1
-	results := make(chan R, gomaxprocs)
-	var wg sync.WaitGroup
-	wg.Add(gomaxprocs)
-
-	for i := 0; i < gomaxprocs; i++ {
+	parallelCount := s.parallelCount
+	for i := 0; i < parallelCount; i++ {
 		go func() {
-			defer wg.Done()
 
 			result := supplier()
 			for {
 				prevReq <- struct{}{}
-				data, ok := <-prevData
+				od, ok := <-prevData
 				if !ok {
 					break
 				}
-				accumulator(result, data)
+				accumulator(result, od.data)
 			}
 			results <- result
 		}()
 	}
-	wg.Wait()
+
+	result := supplier()
+	for i := 0; i < parallelCount; i++ {
+		combiner(result, <-results)
+	}
 
 	close(prevReq)
 	close(results)
-
-	result := supplier()
-	for r := range results {
-		combiner(result, r)
-	}
 
 	return result
 }
@@ -323,8 +344,9 @@ func CollectByCollector[T, R, A any](
 // Empty returns an empty Stream
 func Empty[T any]() Stream[T] {
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
@@ -342,22 +364,31 @@ func Empty[T any]() Stream[T] {
 // consisiting of seed, f(seed), f(f(seed)), etc.
 func Iterate[T any](seed T, f UnaryOperator[T]) Stream[T] {
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
 		useSeed := true
 		nextValue := seed
 
+		order := uint64(0)
 		for range gs.nextReq {
 			if useSeed {
-				gs.nextData <- seed
+				gs.nextData <- orderedData[T]{
+					order: order,
+					data:  seed,
+				}
 				useSeed = false
 			} else {
 				nextValue = f(nextValue)
-				gs.nextData <- nextValue
+				gs.nextData <- orderedData[T]{
+					order: order,
+					data:  nextValue,
+				}
 			}
+			order++
 		}
 		close(gs.nextData)
 	}()
@@ -375,14 +406,16 @@ func IterateN[T any](
 	next UnaryOperator[T]) Stream[T] {
 
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
 		nextValue := seed
 		applyNext := false
 
+		order := uint64(0)
 		for range gs.nextReq {
 			if applyNext {
 				nextValue = next(nextValue)
@@ -392,7 +425,11 @@ func IterateN[T any](
 				break
 			}
 
-			gs.nextData <- nextValue
+			gs.nextData <- orderedData[T]{
+				order: order,
+				data:  nextValue,
+			}
+			order++
 			applyNext = true
 		}
 		close(gs.nextData)
@@ -406,13 +443,19 @@ func IterateN[T any](
 // constant streams, streams of random elements, etc.
 func Generate[T any](s Supplier[T]) Stream[T] {
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
+		order := uint64(0)
 		for range gs.nextReq {
-			gs.nextData <- s()
+			gs.nextData <- orderedData[T]{
+				order: order,
+				data:  s(),
+			}
+			order++
 		}
 		close(gs.nextData)
 	}()
@@ -428,15 +471,20 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 	ags.validateState()
 	bgs.validateState()
 
+	// The concatenated stream is always not parallel.
 	gs := &genericStream[T]{
-		nextReq:  make(chan struct{}),
-		nextData: make(chan T),
+		parallelCount: 1,
+		nextReq:       make(chan struct{}),
+		nextData:      make(chan orderedData[T]),
 	}
 
 	go func() {
 		gs.prevReq = ags.nextReq
 		gs.prevData = ags.nextData
 		switchedToB := false
+
+		offset := uint64(0)
+		lastOrder := uint64(0)
 
 		for range gs.nextReq {
 			data, ok := gs.getPrevData()
@@ -449,6 +497,7 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 				gs.prevReq = bgs.nextReq
 				gs.prevData = bgs.nextData
 				switchedToB = true
+				offset = lastOrder + 1
 
 				data, ok = gs.getPrevData()
 				if !ok {
@@ -456,7 +505,11 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 					return
 				}
 			}
-			gs.nextData <- data
+			lastOrder = data.order
+			gs.nextData <- orderedData[T]{
+				order: data.order + offset,
+				data:  data.data,
+			}
 		}
 		gs.close()
 	}()

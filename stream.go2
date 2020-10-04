@@ -11,6 +11,11 @@ type BaseStream[T any] interface {
 type Stream[T any] interface {
 	BaseStream[T]
 
+	// Parallel returns an equivalent stream that is parallel. May return
+	// itself, either because the stream was alreay parallel, or because
+	// the underlying stream state was modified to be parallel.
+	Parallel() Stream[T]
+
 	// Filter returns a stream consisting of the elements of this stream
 	// that match given predicate.
 	Filter(predicate Predicate[T]) Stream[T]

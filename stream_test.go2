@@ -3,127 +3,102 @@
 package gostream
 
 import (
-	"reflect"
+	"math/rand"
 	"slices"
+	"sort"
 	"strconv"
-	"sync"
 	"testing"
+	"time"
 )
 
 func TestStream_ForEach(t *testing.T) {
 	defer trace("TestStream_ForEach")()
 
-	for _, tc := range [...]struct {
-		input []int
-		want  []int
-	}{
-		{
-			input: []int{},
-			want:  []int{},
-		},
-		{
-			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-			want:  []int{1, 3, 5, 7, 9},
-		},
-	} {
-		stream := Of(tc.input...)
-
-		result := stream.Filter(func(t int) bool {
-			return t&1 == 1
-		}).ToSlice()
-
-		if !slices.Equal(result, tc.want) {
-			t.Errorf("result is %v, want %v", result, tc.want)
-		}
+	data := make([]int, 1000)
+	for i := 0; i < len(data); i++ {
+		data[i] = i
 	}
+
+	t.Run("serial", func(t *testing.T) {
+		defer trace("TestStream_ForEach/serial")()
+
+		want := 0
+		Of(data...).ForEach(func(v int) {
+			if v != want {
+				t.Fatalf("t is %d, want %d", v, want)
+			}
+			want++
+		})
+	})
+
+	t.Run("parallel", func(t *testing.T) {
+		defer trace("TestStream_ForEach/parallel")()
+
+		resultChan := make(chan int, 1000)
+
+		Of(data...).Parallel().ForEach(func(v int) {
+			resultChan <- v
+		})
+
+		close(resultChan)
+
+		var result []int
+		for v := range resultChan {
+			result = append(result, v)
+		}
+
+		if len(result) != len(data) {
+			t.Errorf("len(result) is %d, want %d",
+				len(result), len(data))
+		}
+
+		isSorted := func() bool {
+			for i := 1; i < len(result); i++ {
+				if result[i-1] > result[i] {
+					return false
+				}
+			}
+			return true
+		}
+		if goMaxProcs != 1 && isSorted() {
+			t.Errorf("result(%v) is sorted\n", result)
+		}
+	})
 }
 
 func TestStream_Filter(t *testing.T) {
 	defer trace("TestStream_Filter")()
 
 	for _, tc := range [...]struct {
-		input []int
-		want  []int
+		dataSize int
 	}{
-		{
-			input: []int{},
-			want:  []int{},
-		},
-		{
-			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-			want:  []int{1, 3, 5, 7, 9},
-		},
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
 	} {
-		stream := Of(tc.input...)
+		var data []int
+		var want []int
 
-		result := stream.Filter(func(t int) bool {
-			return t&1 == 1
-		}).Filter(func(t int) bool {
-			return true
-		}).ToSlice()
-
-		if !slices.Equal(result, tc.want) {
-			t.Errorf("result is %v, want %v", result, tc.want)
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			if i&1 == 1 {
+				want = append(want, i)
+			}
 		}
-	}
-}
 
-func TestStream_Map(t *testing.T) {
-	defer trace("TestStream_Map")()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-	for _, tc := range [...]struct {
-		input []int
-		want  []string
-	}{
-		{
-			input: []int{},
-			want:  []string{},
-		},
-		{
-			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-			want:  []string{"1", "3", "5", "7", "9"},
-		},
-	} {
-		stream := Of(tc.input...)
+			result := s.Filter(func(t int) bool {
+				return t&1 == 1
+			}).ToSlice()
 
-		newStream := stream.Filter(func(t int) bool {
-			return t&1 == 1
-		})
-		result := Map(newStream, strconv.Itoa).ToSlice()
-
-		if !slices.Equal(result, tc.want) {
-			t.Errorf("result is %v, want %v", result, tc.want)
-		}
-	}
-}
-
-func TestStream_Distinct(t *testing.T) {
-	defer trace("TestStream_Distinct")()
-
-	for _, tc := range [...]struct {
-		input []int
-		want  []int
-	}{
-		{
-			input: []int{},
-			want:  []int{},
-		},
-		{
-			input: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-				1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-			want: []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-		},
-	} {
-		stream := Of(tc.input...)
-
-		// Filter returns a genericStream
-		newStream := stream.Filter(func(t int) bool {
-			return true
-		})
-		result := Distinct(newStream).ToSlice()
-
-		if !slices.Equal(result, tc.want) {
-			t.Errorf("result is %v, want %v", result, tc.want)
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
 		}
 	}
 }
@@ -131,441 +106,584 @@ func TestStream_Distinct(t *testing.T) {
 func TestStream_Sorted(t *testing.T) {
 	defer trace("TestStream_Sorted")()
 
-	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
+		var want []int
 
-	result := s.Sorted(func(t1, t2 int) bool {
-		return t1 < t2
-	}).ToSlice()
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, tc.dataSize-i-1)
+			want = append(want, i)
+		}
 
-	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	if !slices.Equal(result, want) {
-		t.Errorf("result is %v, want %v", result, want)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			result := s.Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		}
 	}
 }
 
 func TestStream_Peek(t *testing.T) {
 	defer trace("TestStream_Peek")()
 
-	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
+		var want []int
 
-	var lock sync.Mutex
-	var peeked []int
-	peekFunc := func(t int) {
-		lock.Lock()
-		peeked = append(peeked, t)
-		lock.Unlock()
-	}
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, tc.dataSize-1-i)
+			want = append(want, i)
+		}
 
-	result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
-		return t1 < t2
-	}).ToSlice()
-	want := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-	if !slices.Equal(result, want) {
-		t.Errorf("result is %v, want %v", result, want)
-	}
+		ds := strconv.Itoa(tc.dataSize)
 
-	lock.Lock()
-	wantPeeked := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	if !slices.Equal(peeked, wantPeeked) {
-		t.Errorf("peeked is %v, want %v", peeked, wantPeeked)
+		t.Run("serial", func(t *testing.T) {
+			defer trace("TestStream_Peek/serial:" + ds)()
+
+			s := Of(data...)
+
+			peekedChan := make(chan int, tc.dataSize)
+			peekFunc := func(t int) {
+				peekedChan <- t
+			}
+
+			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+
+			close(peekedChan)
+			var peeked []int
+			for v := range peekedChan {
+				peeked = append(peeked, v)
+			}
+
+			if !slices.Equal(peeked, data) {
+				t.Errorf("peeked is %v, want %v", peeked, data)
+			}
+		})
+
+		t.Run("parallel", func(t *testing.T) {
+			defer trace("TestStream_Peek/parallel:" + ds)()
+
+			s := Of(data...).Parallel()
+
+			peekedChan := make(chan int, tc.dataSize)
+			peekFunc := func(t int) {
+				peekedChan <- t
+			}
+
+			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
+				return t1 < t2
+			}).ToSlice()
+
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+
+			close(peekedChan)
+			var peeked []int
+			for v := range peekedChan {
+				peeked = append(peeked, v)
+			}
+
+			if tc.dataSize != 0 && tc.dataSize != 1 && goMaxProcs != 1 {
+				if slices.Equal(peeked, data) {
+					t.Logf("tc.dataSize = %d", tc.dataSize)
+					t.Errorf("peeked is identical to data")
+				}
+			}
+
+			sort.Slice(peeked, func(i, j int) bool {
+				return peeked[i] < peeked[j]
+			})
+			if !slices.Equal(peeked, want) {
+				t.Errorf("peeked is %v, want %v", peeked, want)
+			}
+		})
 	}
-	lock.Unlock()
 }
 
 func TestStream_Limit(t *testing.T) {
 	defer trace("TestStream_Limit")()
 
-	s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
+	for _, tc := range [...]struct {
+		dataSize int
+		limit    int
+	}{
+		{dataSize: 0, limit: 1},
+		{dataSize: 1, limit: 1},
+		{dataSize: 1000, limit: 100},
+	} {
+		var data []int
+		var want []int
 
-	sorted := s.Limit(5).
-		Sorted(func(t1, t2 int) bool {
-			return t1 < t2
-		}).ToSlice()
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			if i < tc.limit {
+				want = append(want, i)
+			}
+		}
 
-	want := []int{6, 7, 8, 9, 10}
-	if !slices.Equal(sorted, want) {
-		t.Errorf("sorted is %v, want %v", sorted, want)
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			result := s.Limit(tc.limit).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		}
 	}
 }
 
 func TestStream_Skip(t *testing.T) {
 	defer trace("TestStream_Skip")()
 
-	t.Run("0", func(t *testing.T) {
-		defer trace("TestStream_Skip/0")()
+	for _, tc := range [...]struct {
+		dataSize int
+		skip     int
+	}{
+		{dataSize: 0, skip: 1},
+		{dataSize: 1, skip: 1},
+		{dataSize: 1000, skip: 100},
+	} {
+		var data []int
+		var want []int
 
-		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-		s = s.Filter(func(t int) bool {
-			return true
-		})
-
-		sorted := s.Skip(0).Limit(5).
-			Sorted(func(t1, t2 int) bool {
-				return t1 < t2
-			}).ToSlice()
-
-		want := []int{6, 7, 8, 9, 10}
-		if !slices.Equal(sorted, want) {
-			t.Errorf("sorted is %v, want %v", sorted, want)
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			if i >= tc.skip {
+				want = append(want, i)
+			}
 		}
-	})
 
-	t.Run("5", func(t *testing.T) {
-		defer trace("TestStream_Skip/5")()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		s := Of(10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
-		s = s.Filter(func(t int) bool {
-			return true
-		})
-
-		sorted := s.Skip(5).Limit(5).
-			Sorted(func(t1, t2 int) bool {
-				return t1 < t2
-			}).ToSlice()
-
-		want := []int{1, 2, 3, 4, 5}
-		if !slices.Equal(sorted, want) {
-			t.Errorf("sorted is %v, want %v", sorted, want)
+			result := s.Skip(tc.skip).ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
 		}
-	})
+	}
 }
 
 func TestStream_ToSlice(t *testing.T) {
 	defer trace("TestStream_ToSlice")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	s := Of(data...)
-	s = s.Filter(func(t int) bool {
-		return true
-	})
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
+		var want []int
 
-	result := s.ToSlice()
-	if !reflect.DeepEqual(result, data) {
-		t.Errorf("result is %v, want %v", result, data)
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			want = append(want, i)
+		}
+
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			result := s.ToSlice()
+			if !slices.Equal(result, want) {
+				t.Errorf("result is %v, want %v", result, want)
+			}
+		}
 	}
 }
 
 func TestStream_Reduce(t *testing.T) {
 	defer trace("TestStream_Reduce")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	sum := Of(data...).Reduce(0, func(t1, t2 int) int {
-		return t1 + t2
-	})
-	want := 0
-	for _, d := range data {
-		want += d
-	}
-	if sum != want {
-		t.Errorf("sum is %d, want %d", sum, want)
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
+		var want int
+
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			want += i
+		}
+
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			result := Of(data...).Reduce(0, Sum[int])
+
+			if result != want {
+				t.Errorf("result is %d, want %d", result, want)
+			}
+		}
 	}
 }
 
 func TestStream_ReduceToOptional(t *testing.T) {
 	defer trace("TestStream_ReduceToOptional")()
 
-	t.Run("emtpy", func(t *testing.T) {
-		defer trace("TestStream_ReduceToOptional/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
 
-		sum := Of[int]().ReduceToOptional(func(t1, t2 int) int {
-			return t1 + t2
-		})
-		if sum.IsPresent() {
-			t.Errorf("sum.IsPresent() is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+			want += i
 		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_ReduceToOptional/one")()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		sum := Of[int](777).ReduceToOptional(func(t1, t2 int) int {
-			return t1 + t2
-		})
-		if sum.Get() != 777 {
-			t.Errorf("sum.Get() is %d, want 777", sum.Get())
+			result := s.ReduceToOptional(Sum[int])
+
+			if result.IsPresent() != tc.present {
+				t.Errorf("result.IsPresent() is %t, want %t",
+					result.IsPresent(), tc.present)
+			}
+
+			if tc.present && result.Get() != want {
+				t.Errorf("result.Get() is %d, want %d", result.Get(), want)
+			}
 		}
-	})
 
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_ReduceToOptional/many")()
-
-		data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-		sum := Of(data...).ReduceToOptional(func(t1, t2 int) int {
-			return t1 + t2
-		})
-		want := 0
-		for _, d := range data {
-			want += d
-		}
-		if sum.Get() != want {
-			t.Errorf("sum is %d, want %d", sum.Get(), want)
-		}
-	})
+	}
 }
 
 func TestStream_Min(t *testing.T) {
 	defer trace("TestStream_Min")()
 
-	less := func(t1, t2 int) bool { return t1 < t2 }
+	rand.Seed(time.Now().Unix())
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_Min/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
+		wantSet := false
 
-		min := Of[int]().Min(less)
-		if min.IsPresent() {
-			t.Errorf("min.IsPresent() is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			r := rand.Int()
+			data = append(data, r)
+			if !wantSet {
+				want = r
+				wantSet = true
+				continue
+			}
+			if r < want {
+				want = r
+			}
 		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_Min/one")()
+		less := func(t1, t2 int) bool { return t1 < t2 }
 
-		min := Of(777).Min(less)
-		if min.Get() != 777 {
-			t.Errorf("min.Get() is %d, want 777", min.Get())
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			min := s.Min(less)
+			if min.IsPresent() != tc.present {
+				t.Errorf("min.IsPresent() is %t, want %t",
+					min.IsPresent(), tc.present)
+			}
+
+			if tc.present && min.Get() != want {
+				t.Errorf("min.Get() is %d, want %d", min.Get(), want)
+			}
 		}
-	})
-
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_Min/many")()
-
-		min := Of(-10, -9, 0, 1, 2, 9, 10).Min(less)
-		if min.Get() != -10 {
-			t.Errorf("min.Get() is %d, want -10", min.Get())
-		}
-	})
+	}
 }
 
 func TestStream_Max(t *testing.T) {
 	defer trace("TestStream_Max")()
 
-	less := func(t1, t2 int) bool { return t1 < t2 }
+	rand.Seed(time.Now().Unix())
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_Max/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
+		wantSet := false
 
-		min := Of[int]().Max(less)
-		if min.IsPresent() {
-			t.Errorf("min.IsPresent() is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			r := rand.Int()
+			data = append(data, r)
+			if !wantSet {
+				want = r
+				wantSet = true
+				continue
+			}
+			if r > want {
+				want = r
+			}
 		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_Max/one")()
+		less := func(t1, t2 int) bool { return t1 < t2 }
 
-		min := Of(777).Max(less)
-		if min.Get() != 777 {
-			t.Errorf("min.Get() is %d, want 777", min.Get())
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			max := s.Max(less)
+			if max.IsPresent() != tc.present {
+				t.Errorf("max.IsPresent() is %t, want %t",
+					max.IsPresent(), tc.present)
+			}
+
+			if tc.present && max.Get() != want {
+				t.Errorf("max.Get() is %d, want %d", max.Get(), want)
+			}
 		}
-	})
-
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_Max/many")()
-
-		min := Of(-10, -9, 0, 1, 2, 9, 10).Max(less)
-		if min.Get() != 10 {
-			t.Errorf("min.Get() is %d, want 10", min.Get())
-		}
-	})
+	}
 }
 
 func TestStream_Count(t *testing.T) {
 	defer trace("TestStream_Count")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
-	count := Of(data...).Count()
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
 
-	if count != len(data) {
-		t.Errorf("count is %d, want %d", count, len(data))
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
+		}
+
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			count := s.Count()
+			if count != tc.dataSize {
+				t.Errorf("count is %d, want %d", count, tc.dataSize)
+			}
+		}
 	}
 }
 
 func TestStream_AnyMatch(t *testing.T) {
 	defer trace("TestStream_AnyMatch")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	for _, tc := range [...]struct {
+		dataSize  int
+		matchData int
+		match     bool
+	}{
+		{dataSize: 0, matchData: 0, match: false},
+		{dataSize: 1, matchData: 0, match: true},
+		{dataSize: 1, matchData: 1, match: false},
+		{dataSize: 1000, matchData: 100, match: true},
+		{dataSize: 1000, matchData: 1000, match: false},
+	} {
+		var data []int
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/empty")()
-
-		match := Of[int]().AnyMatch(func(t int) bool {
-			return true
-		})
-
-		if match {
-			t.Errorf("match is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
 		}
-	})
 
-	t.Run("10", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/10")()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		match := Of(data...).AnyMatch(func(t int) bool {
-			return t == 10
-		})
+			match := s.AnyMatch(func(t int) bool {
+				return t == tc.matchData
+			})
 
-		if !match {
-			t.Errorf("match is false, want true")
+			if match != tc.match {
+				t.Errorf("match is %t, want %t", match, tc.match)
+				t.Errorf("tc: %v", tc)
+			}
 		}
-	})
-
-	t.Run("1", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/1")()
-
-		match := Of(data...).AnyMatch(func(t int) bool {
-			return t == 1
-		})
-
-		if !match {
-			t.Errorf("match is false, want true")
-		}
-	})
-
-	t.Run("99", func(t *testing.T) {
-		defer trace("TestStream_AnyMatch/99")()
-
-		match := Of(data...).AnyMatch(func(t int) bool {
-			return t == 99
-		})
-
-		if match {
-			t.Errorf("match is true, want false")
-		}
-	})
+	}
 }
 
 func TestStream_AllMatch(t *testing.T) {
 	defer trace("TestStream_AllMatch")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	for _, tc := range [...]struct {
+		dataSize int
+		match    bool
+	}{
+		{dataSize: 0, match: true},
+		{dataSize: 1, match: true},
+		{dataSize: 1, match: false},
+		{dataSize: 1000, match: true},
+		{dataSize: 1000, match: false},
+	} {
+		var data []int
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/empty")()
-
-		match := Of[int]().AllMatch(func(t int) bool {
-			return false
-		})
-
-		if !match {
-			t.Errorf("match is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
 		}
-	})
 
-	t.Run("allmatch", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/allmatch")()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		match := Of(data...).AllMatch(func(t int) bool {
-			return 1 <= t && t <= 10
-		})
+			match := s.AllMatch(func(t int) bool {
+				return tc.match
+			})
 
-		if !match {
-			t.Errorf("match is false, want true")
+			if match != tc.match {
+				t.Errorf("match is %t, want %t", match, tc.match)
+			}
 		}
-	})
-
-	t.Run("1", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/1")()
-
-		match := Of(data...).AllMatch(func(t int) bool {
-			return 2 <= t && t <= 10
-		})
-
-		if match {
-			t.Errorf("match is true, want false")
-		}
-	})
-
-	t.Run("10", func(t *testing.T) {
-		defer trace("TestStream_AllMatch/10")()
-
-		match := Of(data...).AllMatch(func(t int) bool {
-			return 1 <= t && t <= 9
-		})
-
-		if match {
-			t.Errorf("match is true, want false")
-		}
-	})
+	}
 }
 
 func TestStream_NoneMatch(t *testing.T) {
 	defer trace("TestStream_NoneMatch")()
 
-	data := []int{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+	for _, tc := range [...]struct {
+		dataSize int
+		match    bool
+	}{
+		{dataSize: 0, match: true},
+		{dataSize: 1, match: true},
+		{dataSize: 1, match: false},
+		{dataSize: 1000, match: true},
+		{dataSize: 1000, match: false},
+	} {
+		var data []int
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_NoneMatch/empty")()
-
-		noneMatch := Of[int]().NoneMatch(func(t int) bool {
-			return false
-		})
-
-		if !noneMatch {
-			t.Errorf("noneMatch is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, i)
 		}
-	})
 
-	t.Run("match", func(t *testing.T) {
-		defer trace("TestStream_NoneMatch/match")()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		noneMatch := Of(data...).NoneMatch(func(t int) bool {
-			return t == 5
-		})
+			noneMatch := s.NoneMatch(func(t int) bool {
+				return tc.match
+			})
 
-		if noneMatch {
-			t.Errorf("noneMatch is true, want false")
+			if tc.dataSize == 0 {
+				if !noneMatch {
+					t.Errorf("noneMatch is false, want true")
+				}
+				continue
+			}
+
+			if noneMatch == tc.match {
+				t.Errorf("noneMatch is %t, want %t", noneMatch, !tc.match)
+			}
 		}
-	})
-
-	t.Run("noneMatch", func(t *testing.T) {
-		defer trace("TestStream_NoneMatch/1")()
-
-		noneMatch := Of(data...).NoneMatch(func(t int) bool {
-			return t < 1 || 10 < t
-		})
-
-		if !noneMatch {
-			t.Errorf("noneMatch is false, want true")
-		}
-	})
+	}
 }
 
 func TestStream_FindFirst(t *testing.T) {
 	defer trace("TestStream_FindFirst")()
 
-	t.Run("empty", func(t *testing.T) {
-		defer trace("TestStream_FindFirst/empty")()
+	for _, tc := range [...]struct {
+		dataSize int
+	}{
+		{dataSize: 0},
+		{dataSize: 1},
+		{dataSize: 1000},
+	} {
+		var data []int
 
-		min := Of[int]().FindFirst()
-		if min.IsPresent() {
-			t.Errorf("min.IsPresent() is true, want false")
+		for i := 0; i < tc.dataSize; i++ {
+			data = append(data, 777-i)
 		}
-	})
 
-	t.Run("one", func(t *testing.T) {
-		defer trace("TestStream_FindFirst/one")()
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
 
-		min := Of(777).FindFirst()
-		if min.Get() != 777 {
-			t.Errorf("min.Get() is %d, want 777", min.Get())
+			min := s.FindFirst()
+			if tc.dataSize == 0 {
+				if min.IsPresent() {
+					t.Errorf("min.IsPresent() is true, want false")
+				}
+				continue
+			}
+
+			if min.Get() != 777 {
+				t.Errorf("min.Get() is %d, want 777", min.Get())
+			}
 		}
-	})
-
-	t.Run("many", func(t *testing.T) {
-		defer trace("TestStream_FindFirst/many")()
-
-		min := Of(-10, -9, 0, 1, 2, 9, 10).FindFirst()
-		if min.Get() != -10 {
-			t.Errorf("min.Get() is %d, want -10", min.Get())
-		}
-	})
+	}
 }
