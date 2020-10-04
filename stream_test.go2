@@ -3,7 +3,10 @@
 package gostream
 
 import (
+	"bufio"
+	"fmt"
 	"math/rand"
+	"os"
 	"slices"
 	"sort"
 	"strconv"
@@ -686,4 +689,26 @@ func TestStream_FindFirst(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestStream_Example00(t *testing.T) {
+	defer trace("TestStream_Example00")()
+
+	f, err := os.Open("testdata/alice.txt")
+	if err != nil {
+		t.Fatalf("os.Open failed: %v\n", err)
+	}
+	defer f.Close()
+	input := bufio.NewScanner(f)
+	input.Split(bufio.ScanWords)
+
+	var words []string
+	for input.Scan() {
+		words = append(words, input.Text())
+	}
+
+	count := Of(words...).Parallel().Filter(func(w string) bool {
+		return len(w) > 12
+	}).Count()
+	fmt.Printf("count is %d\n", count)
 }
