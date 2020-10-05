@@ -1,3 +1,4 @@
+2020/10/06 FileLines() function is added.
 2020/09/26 Reduce() function supports parallel
 2020/09/26 NoneMatch() method supports parallel
 2020/09/26 AllMatch() method supports parallel

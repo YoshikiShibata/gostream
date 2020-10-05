@@ -1,0 +1,79 @@
+// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+
+package gostream
+
+import (
+	"bufio"
+	"fmt"
+	"math/rand"
+	"os"
+	"testing"
+)
+
+func TestExample_00(t *testing.T) {
+	defer trace("TestExample_00")()
+
+	f, err := os.Open("testdata/alice.txt")
+	if err != nil {
+		t.Fatalf("os.Open failed: %v\n", err)
+	}
+	defer f.Close()
+	input := bufio.NewScanner(f)
+	input.Split(bufio.ScanWords)
+
+	var words []string
+	for input.Scan() {
+		words = append(words, input.Text())
+	}
+
+	count := Of(words...).Parallel().Filter(func(w string) bool {
+		return len(w) > 12
+	}).Count()
+	fmt.Printf("count is %d\n", count)
+}
+
+func TestExample_01(t *testing.T) {
+	defer trace("TestExample_01")()
+
+	// generate same value repeatedly
+	Generate(func() string {
+		return "Echo"
+	}).Limit(10).ForEach(func(t string) {
+		fmt.Printf("%s ", t)
+	})
+	fmt.Println()
+}
+
+func TestExample_02(t *testing.T) {
+	defer trace("TestExample_02")()
+
+	// generate random stream
+	Generate(rand.Int).Limit(10).ForEach(func(t int) {
+		fmt.Printf("%d ", t)
+	})
+	fmt.Println()
+}
+
+func TestExample_03(t *testing.T) {
+	defer trace("TestExample_03")()
+
+	// generate 0, 1, 2, 3, 4, 5, ...
+	Iterate(0, func(t int) int {
+		return t + 1
+	}).Limit(10).ForEach(func(t int) {
+		fmt.Printf("%d ", t)
+	})
+	fmt.Println()
+}
+
+func TestExample_04(t *testing.T) {
+	defer trace("TestExample_04")()
+
+	s, err := FileLines("testdata/alice.txt")
+	if err != nil {
+		t.Fatalf("LinesOfFile failed: %v", err)
+	}
+	s.Limit(10).ForEach(func(t string) {
+		fmt.Println(t)
+	})
+}
