@@ -8,8 +8,11 @@ Generic. This package is an experimental implementation for me to learn the Go2 
 ## `Stream` interface
 
 `Stream` interface is a generic interface. As a factory of `Stream` interface,
-`Of` function creates a `Stream` from a slice. Or you can use `Builder` to 
-create a `Stream`.
+following functions are available:
+
+- `Of` function creates a `Stream` from a slice. 
+- `Builder` can be used to create a `Stream` by adding elements.
+- `FileLines` function returns a `Stream` of lines of a file.
 
 `Stream` provides following methods:
 
