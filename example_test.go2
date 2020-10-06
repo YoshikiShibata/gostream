@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -26,10 +27,50 @@ func TestExample_00(t *testing.T) {
 		words = append(words, input.Text())
 	}
 
-	count := Of(words...).Parallel().Filter(func(w string) bool {
-		return len(w) > 12
-	}).Count()
-	fmt.Printf("count is %d\n", count)
+	t.Run("Filter", func(t *testing.T) {
+		defer trace("TestExample_00/Filter")()
+
+		count := Of(words...).Parallel().Filter(func(w string) bool {
+			return len(w) > 12
+		}).Count()
+		fmt.Printf("count is %d\n", count)
+	})
+
+	t.Run("Map", func(t *testing.T) {
+		defer trace("TestExample_00/Map")()
+
+		Map(Of(words...), strings.ToLower).
+			Limit(10).ForEach(func(t string) {
+			fmt.Printf("%s ", t)
+		})
+		fmt.Println()
+	})
+
+	t.Run("first runes", func(t *testing.T) {
+		defer trace("TestExample_00/firstrunes")()
+
+		firstRunes := Map(Of(words...), func(t string) rune {
+			for _, r := range t {
+				return r
+			}
+			panic("emty string")
+		}).Limit(10).ToSlice()
+
+		fmt.Printf("first runes: %c\n", firstRunes)
+	})
+
+	runeStream := func(s string) Stream[rune] {
+		runes := []rune(s)
+		return Of(runes...)
+	}
+
+	t.Run("FlatMap", func(t *testing.T) {
+		defer trace("TestExample_00/FlatMap")()
+
+		result := FlatMap(Of("your", "boat"), runeStream).ToSlice()
+
+		fmt.Printf("flat map: %c\n", result)
+	})
 }
 
 func TestExample_01(t *testing.T) {
