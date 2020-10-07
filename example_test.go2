@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestExample_00(t *testing.T) {
@@ -69,7 +71,36 @@ func TestExample_00(t *testing.T) {
 
 		result := FlatMap(Of("your", "boat"), runeStream).ToSlice()
 
-		fmt.Printf("flat map: %c\n", result)
+		resultStr := fmt.Sprintf("%c", result)
+		want := "[y o u r b o a t]"
+
+		if resultStr != want {
+			t.Errorf("resultStr is %q, want %q", resultStr, want)
+		}
+	})
+
+	t.Run("Skip", func(t *testing.T) {
+		defer trace("TestExample_00/Skip")()
+
+		first100 := Of(words...).Limit(100).ToSlice()
+		skip10 := Of(words...).Skip(10).Limit(90).ToSlice()
+
+		if !slices.Equal(skip10, first100[10:]) {
+			t.Errorf("skip10 is %v, \nwant %v", skip10, first100[10:])
+		}
+	})
+
+	t.Run("Concat", func(t *testing.T) {
+		defer trace("TestExample_00/Concat")()
+
+		result := Concat(runeStream("Hello"), runeStream("World")).ToSlice()
+
+		resultStr := fmt.Sprintf("%c", result)
+		want := "[H e l l o W o r l d]"
+
+		if resultStr != want {
+			t.Errorf("resultStr is %q, want %q", resultStr, want)
+		}
 	})
 }
 
@@ -93,10 +124,15 @@ func TestExample_02(t *testing.T) {
 		fmt.Printf("%d ", t)
 	})
 	fmt.Println()
+
+	Generate(rand.Float64).Limit(10).ForEach(func(t float64) {
+		fmt.Printf("%e ", t)
+	})
+	fmt.Println()
 }
 
 func TestExample_03(t *testing.T) {
-	defer trace("TestExample_03")()
+	defer trace("TestExample_03:Iterate")()
 
 	// generate 0, 1, 2, 3, 4, 5, ...
 	Iterate(0, func(t int) int {
@@ -108,7 +144,7 @@ func TestExample_03(t *testing.T) {
 }
 
 func TestExample_04(t *testing.T) {
-	defer trace("TestExample_04")()
+	defer trace("TestExample_04:FileLines")()
 
 	s, err := FileLines("testdata/alice.txt")
 	if err != nil {
@@ -117,4 +153,28 @@ func TestExample_04(t *testing.T) {
 	s.Limit(10).ForEach(func(t string) {
 		fmt.Println(t)
 	})
+}
+
+func TestExample_05(t *testing.T) {
+	defer trace("TestExample_05:Peek")()
+
+	Iterate(1.0, func(t float64) float64 {
+		return t * 2
+	}).Peek(func(t float64) {
+		fmt.Printf("Fetching %e\n", t)
+	}).Limit(10).ForEach(func(t float64) {
+		time.Sleep(time.Second / 2)
+	})
+}
+
+func TestExample_06(t *testing.T) {
+	defer trace("TestExample_05:Distinct")()
+
+	result := Distinct(Of("merrily", "merrily", "merrily", "gently")).ToSlice()
+
+	want := "[merrily gently]"
+	resultStr := fmt.Sprintf("%s", result)
+	if resultStr != want {
+		t.Errorf("resultStr is %q, want %q", resultStr, want)
+	}
 }
