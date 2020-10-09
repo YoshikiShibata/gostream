@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"sort"
 	"sync"
+	"sync/atomic"
 )
 
 type orderedData[T any] struct {
@@ -637,97 +638,94 @@ func (gs *genericStream[T]) Count() int {
 func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
 	gs.validateState()
 
-	results := make(chan bool)
+	var matched int64
+	var wg sync.WaitGroup
 
 	parallelCount := gs.parallelCount
 	for i := 0; i < parallelCount; i++ {
+		wg.Add(1)
 		go func() {
-			match := false
+			defer wg.Done()
 
 			gs.terminalOpMatch(func(t T) bool {
+				if atomic.LoadInt64(&matched) == 1 {
+					return false
+				}
+
 				if !predicate(t) {
 					return true // continue
 				}
 
-				match = true
+				atomic.StoreInt64(&matched, 1)
 				return false
 			})
-
-			results <- match
 		}()
 	}
+	wg.Wait()
 
-	match := false
-	for i := 0; i < parallelCount; i++ {
-		if <-results {
-			match = true
-		}
-	}
-	return match
+	return atomic.LoadInt64(&matched) == 1
 }
 
 func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
 	gs.validateState()
 
-	results := make(chan bool)
+	var matched int64 = 1
+	var wg sync.WaitGroup
 
 	parallelCount := gs.parallelCount
 	for i := 0; i < parallelCount; i++ {
+		wg.Add(1)
 		go func() {
-			match := true
+			defer wg.Done()
 
 			gs.terminalOpMatch(func(t T) bool {
+				if atomic.LoadInt64(&matched) == 0 {
+					return false
+				}
 				if predicate(t) {
 					return true // contine
 				}
-				match = false
+				atomic.StoreInt64(&matched, 0)
 				return false
 			})
 
-			results <- match
 		}()
 	}
 
-	match := true
-	for i := 0; i < parallelCount; i++ {
-		if !(<-results) {
-			match = false
-		}
-	}
+	wg.Wait()
 
-	return match
+	return atomic.LoadInt64(&matched) == 1
 }
 
 func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
 	gs.validateState()
 
-	results := make(chan bool)
+	var matched int64
+	var wg sync.WaitGroup
 
 	parallelCount := gs.parallelCount
 	for i := 0; i < parallelCount; i++ {
+		wg.Add(1)
 		go func() {
-			noneMatch := true
+			defer wg.Done()
 
 			gs.terminalOpMatch(func(t T) bool {
+				if atomic.LoadInt64(&matched) == 1 {
+					return false
+				}
+
 				if !predicate(t) {
 					return true // continue
 				}
-				noneMatch = false
+				atomic.StoreInt64(&matched, 1)
 				return false
 			})
-
-			results <- noneMatch
 		}()
 	}
 
-	noneMatch := true
-	for i := 0; i < parallelCount; i++ {
-		if !(<-results) {
-			noneMatch = false
-		}
-	}
+	wg.Wait()
 
-	return noneMatch
+	return atomic.LoadInt64(&matched) != 1
 }
 
 func (gs *genericStream[T]) FindFirst() *Optional[T] {
@@ -739,6 +737,7 @@ func (gs *genericStream[T]) FindFirst() *Optional[T] {
 	foundAny := false
 	var result T
 
+	// TODO: find the first one in order.
 	gs.terminalOpMatch(func(t T) bool {
 		foundAny = true
 		result = t
@@ -748,6 +747,42 @@ func (gs *genericStream[T]) FindFirst() *Optional[T] {
 
 	if foundAny {
 		return OptionalOf(result)
+	}
+	return OptionalEmpty[T]()
+}
+
+func (gs *genericStream[T]) FindAny() *Optional[T] {
+	gs.validateState()
+
+	var found int64 = 0
+	var wg sync.WaitGroup
+
+	parallelCount := gs.parallelCount
+	results := make(chan T, parallelCount)
+	for i := 0; i < parallelCount; i++ {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			gs.terminalOpMatch(func(t T) bool {
+				if atomic.LoadInt64(&found) == 1 {
+					return false
+				}
+
+				results <- t
+				atomic.StoreInt64(&found, 1)
+
+				return false
+			})
+
+		}()
+	}
+	wg.Wait()
+
+	close(results)
+	if atomic.LoadInt64(&found) == 1 {
+		return OptionalOf(<-results)
 	}
 	return OptionalEmpty[T]()
 }

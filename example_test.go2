@@ -102,6 +102,58 @@ func TestExample_00(t *testing.T) {
 			t.Errorf("resultStr is %q, want %q", resultStr, want)
 		}
 	})
+
+	t.Run("Sorted", func(t *testing.T) {
+		defer trace("TestExample_00/Sorted")()
+
+		Of(words...).Sorted(func(t1, t2 string) bool {
+			// reversed
+			return len(t2) < len(t1)
+		}).Limit(10).ForEach(func(t string) {
+			fmt.Printf("%s ", t)
+		})
+		fmt.Println()
+	})
+
+	t.Run("Max", func(t *testing.T) {
+		defer trace("TestExample_00/Max")()
+
+		largest := Of(words...).Max(func(t1, t2 string) bool {
+			return t1 < t2
+		})
+		if largest.IsPresent() {
+			fmt.Printf("largest: %s\n", largest.Get())
+		}
+	})
+
+	t.Run("FindFirst", func(t *testing.T) {
+		defer trace("TestExample_00/FindFirst")()
+
+		startsWithQ := Of(words...).Filter(func(t string) bool {
+			return strings.HasPrefix(t, "Q")
+		}).FindFirst()
+
+		if startsWithQ.IsPresent() {
+			fmt.Printf("startsWithQ: %s\n", startsWithQ.Get())
+		}
+
+		startsWithQ = Of(words...).Parallel().Filter(func(t string) bool {
+			return strings.HasPrefix(t, "Q")
+		}).FindAny()
+
+		if startsWithQ.IsPresent() {
+			fmt.Printf("startsWithQ: %s\n", startsWithQ.Get())
+		}
+
+		aWordStartWithQ := Of(words...).Parallel().AnyMatch(func(t string) bool {
+			return strings.HasPrefix(t, "Q")
+		})
+
+		if !aWordStartWithQ {
+			t.Errorf("aWordStartWithQ is false, want true")
+		}
+
+	})
 }
 
 func TestExample_01(t *testing.T) {

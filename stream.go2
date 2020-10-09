@@ -87,4 +87,14 @@ type Stream[T any] interface {
 	// FindFirst returns an Optional describing the first element of this
 	// stream or an empty Optional if the stream is empty.
 	FindFirst() *Optional[T]
+
+	// FindAny returns an Optional describing some element of the stream, or
+	// an empty Optional if the steam is empty.
+	//
+	// The behavior of this operation is explicitly nondeterministic; it is
+	// free to select any element in the stream. This is to allow for maximal
+	// performance in parallel operations; the cost is that multiple
+	// invocations on the same source many not return the same result. (If a
+	// stable result is desired, use FindFirst instead.
+	FindAny() *Optional[T]
 }

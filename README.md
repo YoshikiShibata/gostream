@@ -32,6 +32,7 @@ following functions are available:
 - `AllMatch`
 - `NoneMatch`
 - `FindFirst`
+- `FindAny`
 - `Parallel`
 
 With the Go2 Generic, an interface cannot provided so-called **generic method** (in Java terms): instead, this package provides top-level functions of which the first
