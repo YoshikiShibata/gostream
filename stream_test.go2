@@ -353,7 +353,7 @@ func TestStream_Reduce(t *testing.T) {
 				s = s.Parallel()
 			}
 
-			result := Of(data...).Reduce(0, Sum[int])
+			result := Of(data...).Reduce(0, sum[int])
 
 			if result != want {
 				t.Errorf("result is %d, want %d", result, want)
@@ -387,7 +387,7 @@ func TestStream_ReduceToOptional(t *testing.T) {
 				s = s.Parallel()
 			}
 
-			result := s.ReduceToOptional(Sum[int])
+			result := s.ReduceToOptional(sum[int])
 
 			if result.IsPresent() != tc.present {
 				t.Errorf("result.IsPresent() is %t, want %t",

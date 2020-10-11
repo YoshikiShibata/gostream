@@ -5,6 +5,7 @@ package gostream
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"slices"
@@ -154,6 +155,28 @@ func TestExample_00(t *testing.T) {
 		}
 
 	})
+
+	t.Run("Reduce", func(t *testing.T) {
+		defer trace("TestExample_00/Reduce")()
+
+		result1 := Sum(Map(Of(words...).Parallel(),
+			func(s string) int { return len(s) },
+		))
+
+		result2 := Reduce(Of(words...).Parallel(),
+			0, // identity
+			func(t int, s string) int {
+				return t + int(len(s))
+			}, // accumulator
+			func(t1, t2 int) int {
+				return t1 + t2
+			},
+		)
+
+		if result1 != result2 {
+			t.Errorf("result1 is %d, want %d", result1, result2)
+		}
+	})
 }
 
 func TestExample_01(t *testing.T) {
@@ -220,7 +243,7 @@ func TestExample_05(t *testing.T) {
 }
 
 func TestExample_06(t *testing.T) {
-	defer trace("TestExample_05:Distinct")()
+	defer trace("TestExample_06:Distinct")()
 
 	result := Distinct(Of("merrily", "merrily", "merrily", "gently")).ToSlice()
 
@@ -229,4 +252,27 @@ func TestExample_06(t *testing.T) {
 	if resultStr != want {
 		t.Errorf("resultStr is %q, want %q", resultStr, want)
 	}
+}
+
+func TestExample_07(t *testing.T) {
+	defer trace("TestExample_07:OptionalFlatMap")()
+
+	inverse := func(x float64) *Optional[float64] {
+		if x == 0.0 {
+			return OptionalEmpty[float64]()
+		}
+		return OptionalOf(1.0 / x)
+	}
+
+	squareRoot := func(x float64) *Optional[float64] {
+		if x < 0.0 {
+			return OptionalEmpty[float64]()
+		}
+		return OptionalOf(math.Sqrt(x))
+	}
+
+	a := OptionalFlatMap(OptionalOf(4.0), inverse)
+	result := OptionalFlatMap(a, squareRoot)
+
+	fmt.Printf("result : %v\n", result)
 }

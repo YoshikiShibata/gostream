@@ -516,3 +516,36 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 
 	return gs
 }
+
+// Returns the sum of elements in this stream.
+func Sum[T constraints.Ordered](stream Stream[T]) T {
+	gs := stream.(*genericStream[T])
+	gs.validateState()
+
+	if !gs.parallel {
+		var sum T
+		gs.terminalOp(func(t T) {
+			sum += t
+		})
+		return sum
+	}
+
+	sums := make(chan T)
+	parallelCount := gs.parallelCount
+	for i := 0; i < parallelCount; i++ {
+		go func() {
+			var sum T
+			gs.terminalOp(func(t T) {
+				sum += t
+			})
+			sums <- sum
+		}()
+	}
+
+	var sum T
+	for i := 0; i < parallelCount; i++ {
+		sum += <-sums
+	}
+	close(sums)
+	return sum
+}

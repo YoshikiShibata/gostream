@@ -50,6 +50,7 @@ parameter is a `Stream`:
 - `IteratN`
 - `Generate`
 - `Concat`
+- `Sum`
 
 For `CollectByCollector` function, following functions as a `Collector` are provided:
 
