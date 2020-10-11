@@ -304,3 +304,38 @@ func TestCollectors_ToMapCollector(t *testing.T) {
 		t.Errorf("result[odd] is %d, want %d", result["odd"], oddSum)
 	}
 }
+
+func TestCollectors_SummarizingInt64Collector(t *testing.T) {
+	defer trace("TestCollectors_SummarizingInt64Collector")()
+
+	count := 1000
+	s := Iterate[int64](1, func(t int64) int64 {
+		return t + 1
+	}).Limit(count).Parallel()
+
+	result := CollectByCollector(
+		s,
+		SummarizingInt64Collector(func(i int64) int64 {
+			return i
+		}),
+	)
+
+	if result.GetCount() != int64(count) {
+		t.Errorf("result.GetCount() is %d, want %d", result.GetCount(), count)
+	}
+	if result.GetMin() != 1 {
+		t.Errorf("result.GetMin() is %d, want 1", result.GetMin())
+	}
+	if result.GetMax() != int64(count) {
+		t.Errorf("result.GetMax() is %d, want %d", result.GetMax(), count)
+	}
+	wantSum := (1 + count) * count / 2
+	if result.GetSum() != int64(wantSum) {
+		t.Errorf("result.GetSum() is %d, want %d", result.GetSum(), wantSum)
+	}
+	wantAverage := float64(wantSum) / float64(count)
+	if result.GetAverage() != wantAverage {
+		t.Errorf("result.GetAverage() is %e, want %e", result.GetAverage(), wantAverage)
+	}
+	fmt.Printf("result : %v\n", result)
+}

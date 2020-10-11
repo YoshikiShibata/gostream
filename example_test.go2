@@ -177,6 +177,18 @@ func TestExample_00(t *testing.T) {
 			t.Errorf("result1 is %d, want %d", result1, result2)
 		}
 	})
+
+	t.Run("Joining", func(t *testing.T) {
+		defer trace("TestExample_00/Joining")()
+
+		result := CollectByCollector(
+			Of(words...).Limit(10),
+			JoiningCollector(" "),
+		)
+
+		fmt.Printf("result := %s\n", result)
+	})
+
 }
 
 func TestExample_01(t *testing.T) {

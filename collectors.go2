@@ -320,3 +320,24 @@ func ToMapCollector[T any, K comparable, U any](
 		},
 	}
 }
+
+// SummarizingInt64Collector returns a Collector which applies an
+// int64-producing mapping function to each input element, and returns summary
+// statistics for the resulting values.
+func SummarizingInt64Collector[T any](
+	mapper Function[T, int64],
+) *Collector[T, *Int64SummaryStatistics, *Int64SummaryStatistics] {
+	return &Collector[T, *Int64SummaryStatistics, *Int64SummaryStatistics]{
+		supplier: NewInt64SummaryStatistics,
+		accumulator: func(i *Int64SummaryStatistics, t T) {
+			i.accept(mapper(t))
+		},
+		combiner: func(l *Int64SummaryStatistics, r *Int64SummaryStatistics) *Int64SummaryStatistics {
+			l.combine(r)
+			return l
+		},
+		finisher: func(i *Int64SummaryStatistics) *Int64SummaryStatistics {
+			return i
+		},
+	}
+}

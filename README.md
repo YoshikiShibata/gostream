@@ -65,3 +65,4 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `PartitioningByToSliceCollector`
 - `PartitioningByCollector`
 - `ToMapCollector`
+- `SummarizingInt64Collector`
