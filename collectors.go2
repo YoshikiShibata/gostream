@@ -322,7 +322,7 @@ func ToMapCollector[T any, K comparable, U any](
 }
 
 // SummarizingCollector returns a Collector which applies an
-// int64-producing mapping function to each input element, and returns summary
+// number-producing mapping function to each input element, and returns summary
 // statistics for the resulting values.
 func SummarizingCollector[T any, R Number](
 	mapper Function[T, R],

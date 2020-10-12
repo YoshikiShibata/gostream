@@ -34,3 +34,8 @@ type BiConsumer[T, U any] func(t T, u U)
 // UnaryOperator represents an operation on a single operand that produces a
 // result of the same type as its operand
 type UnaryOperator[T any] Function[T, T]
+
+// Identity is a function that alwasy returns its input argument
+func Identity[T any](t T) T {
+	return t
+}
