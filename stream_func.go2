@@ -518,7 +518,7 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 }
 
 // Returns the sum of elements in this stream.
-func Sum[T constraints.Ordered](stream Stream[T]) T {
+func Sum[T Number](stream Stream[T]) T {
 	gs := stream.(*genericStream[T])
 	gs.validateState()
 

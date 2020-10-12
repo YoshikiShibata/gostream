@@ -305,17 +305,17 @@ func TestCollectors_ToMapCollector(t *testing.T) {
 	}
 }
 
-func TestCollectors_SummarizingInt64Collector(t *testing.T) {
-	defer trace("TestCollectors_SummarizingInt64Collector")()
+func TestCollectors_SummarizingCollector(t *testing.T) {
+	defer trace("TestCollectors_SummarizingCollector")()
 
 	count := 1000
-	s := Iterate[int64](1, func(t int64) int64 {
+	s := Iterate(1, func(t int) int {
 		return t + 1
 	}).Limit(count).Parallel()
 
 	result := CollectByCollector(
 		s,
-		SummarizingInt64Collector(func(i int64) int64 {
+		SummarizingCollector(func(i int) int {
 			return i
 		}),
 	)
