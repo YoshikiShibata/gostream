@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	// "golang.org/x/text/language"
+	// "golang.org/x/text/language/display"
 )
 
 func TestExample_00(t *testing.T) {
@@ -288,3 +290,29 @@ func TestExample_07(t *testing.T) {
 
 	fmt.Printf("result : %v\n", result)
 }
+
+/*
+func TestExample_08(t *testing.T) {
+	defer trace("TestExample_08:ToMapCollector")()
+
+	locales := display.Supported.Tags()
+	en := display.English.Tags()
+
+	result := CollectByCollector(
+		Of(locales...),
+		ToMapCollector(
+			func(tag language.Tag) string {
+				return en.Name(tag)
+			},
+			func(tag language.Tag) string {
+				return display.Self.Name(tag)
+			},
+			func(existingValue, newValue string) string {
+				return existingValue
+			},
+		),
+	)
+
+	fmt.Println(result)
+}
+*/
