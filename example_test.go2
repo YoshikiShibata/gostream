@@ -5,6 +5,8 @@ package gostream
 import (
 	"bufio"
 	"fmt"
+	// "golang.org/x/text/language"
+	// "golang.org/x/text/language/display"
 	"math"
 	"math/rand"
 	"os"
@@ -12,8 +14,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	// "golang.org/x/text/language"
-	// "golang.org/x/text/language/display"
 )
 
 func TestExample_00(t *testing.T) {
@@ -189,6 +189,28 @@ func TestExample_00(t *testing.T) {
 		)
 
 		fmt.Printf("result := %s\n", result)
+	})
+
+	t.Run("ToMapCollector", func(t *testing.T) {
+		defer trace("TestExample_00/Joining")()
+
+		result := CollectByCollector(
+			Of(words...),
+			ToMapCollector(
+				Identity[string],
+				func(t string) int { return 1 },
+				func(v1, v2 int) int { return v1 + v2 },
+			),
+		)
+
+		count := 0
+		for k, v := range result {
+			fmt.Printf("%q : %d\n", k, v)
+			count++
+			if count > 10 {
+				return
+			}
+		}
 	})
 
 }

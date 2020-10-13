@@ -51,7 +51,9 @@ func ToSetCollector[T comparable]() *Collector[T, map[T]bool, map[T]bool] {
 
 // JoiningCollector returns a Collector that concatenates the input elements
 // into a string, in encounter order.
-func JoiningCollector(sep string) *Collector[string, *[]string, string] {
+func JoiningCollector(
+	sep string,
+) *Collector[string, *[]string, string] {
 	return &Collector[string, *[]string, string]{
 		supplier: func() *[]string {
 			var s []string
@@ -115,7 +117,8 @@ func FlatMappingCollector[T, U, A, R any](
 // if the predicate returns true
 func FilteringCollector[T, A, R any](
 	predicate Predicate[T],
-	downstream *Collector[T, A, R]) *Collector[T, A, R] {
+	downstream *Collector[T, A, R],
+) *Collector[T, A, R] {
 	downstreamAccumulator := downstream.Accumulator()
 
 	return &Collector[T, A, R]{
@@ -150,7 +153,8 @@ func GroupingByToSliceCollector[T any, K comparable](
 // associated with a give key using the specified downstream Collector.
 func GroupingByCollector[T any, K comparable, A, D any](
 	classifier Function[T, K],
-	downstream *Collector[T, A, D]) *Collector[T, map[K]A, map[K]D] {
+	downstream *Collector[T, A, D],
+) *Collector[T, map[K]A, map[K]D] {
 
 	downstreamSupplier := downstream.Supplier()
 	downstreamAccumulator := downstream.Accumulator()
@@ -340,6 +344,29 @@ func SummarizingCollector[T any, R Number](
 		},
 		finisher: func(i *SummaryStatistics[R]) *SummaryStatistics[R] {
 			return i
+		},
+	}
+}
+
+// SummingCollector returns a Collector that produces the sum of a 
+// number-valued function applied to the input elements. If no elements are 
+// present, the result is 0.
+func SummingCollector[T any, R Number](
+	mapper Function[T, R],
+) *Collector[T, *R, R] {
+	return &Collector[T, *R, R]{
+		supplier: func() *R {
+			return new(R)
+		},
+		accumulator: func(a *R, t T) {
+			*a += mapper(t)
+		},
+		combiner: func(a, b *R) *R {
+			*a += *b
+			return a
+		},
+		finisher: func(a *R) R {
+			return *a
 		},
 	}
 }

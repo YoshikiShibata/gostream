@@ -66,3 +66,4 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `PartitioningByCollector`
 - `ToMapCollector`
 - `SummarizingCollector`
+- `SummingCollector`

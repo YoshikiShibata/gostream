@@ -1,3 +1,4 @@
+2020/10/14 SummingCollector is implemented
 2020/10/13 Identity() function is added
 2020/10/12 SummarizingCollector is implemented
 2020/10/11 Sum() function is implemented
