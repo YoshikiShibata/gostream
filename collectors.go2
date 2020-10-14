@@ -379,3 +379,65 @@ func CountingCollector[T any, R Number]() *Collector[T, *R, R] {
 		func(t T) R { return 1 },
 	)
 }
+
+// ReducingCollector returns a Collector which performs a reduction of its
+// input elements under a specified BinaryOperator using the provided
+// identity.
+func ReducingCollector[T any](
+	identity T,
+	op BinaryOperator[T],
+) *Collector[T, *T, T] {
+	return &Collector[T, *T, T]{
+		supplier: func() *T {
+			var t = identity
+			return &t
+		},
+		accumulator: func(a *T, t T) {
+			*a = op(*a, t)
+		},
+		combiner: func(a, b *T) *T {
+			*a = op(*a, *b)
+			return a
+		},
+		finisher: func(a *T) T {
+			return *a
+		},
+	}
+}
+
+func ReducingToOptionalCollector[T any](
+	op BinaryOperator[T],
+) *Collector[T, *Optional[T], *Optional[T]] {
+	accept := func(o *Optional[T], t T) {
+		if o.present {
+			o.value = op(o.value, t)
+		} else {
+			o.value = t
+			o.present = true
+		}
+	}
+
+	return &Collector[T, *Optional[T], *Optional[T]]{
+		supplier: func() *Optional[T] {
+			return OptionalEmpty[T]()
+		},
+		accumulator: func(a *Optional[T], t T) {
+			accept(a, t)
+		},
+		combiner: func(a, b *Optional[T]) *Optional[T] {
+			if b.present {
+				accept(a, b.value)
+			}
+			return a
+		},
+		finisher: Identity[*Optional[T]],
+	}
+}
+
+/*
+func MaxByCollector[T](
+less Less[t],
+) *Collector[T, ???, *Optional[T]] {
+
+}
+*/

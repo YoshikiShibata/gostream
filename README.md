@@ -68,3 +68,5 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `SummarizingCollector`
 - `SummingCollector`
 - `CountingCollector`
+- `ReducingCollector`
+- `ReducingToOptionalCollector`
