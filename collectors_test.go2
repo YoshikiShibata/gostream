@@ -232,6 +232,27 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 			t.Errorf("resultStr is %q, but want %q", resultStr, want)
 		}
 	})
+
+	t.Run("Slice", func(t *testing.T) {
+		defer trace("TestCollectors_GroupingByCollector/Counting")()
+
+		result := CollectByCollector(
+			Of(data...),
+			GroupingByCollector(
+				func(t int) string {
+					if t&1 == 0 {
+						return "even"
+					}
+					return "odd"
+				},
+				CountingCollector[int, int]()),
+		)
+		want := "map[even:5 odd:5]"
+		resultStr := fmt.Sprintf("%v", result)
+		if resultStr != want {
+			t.Errorf("resultStr is %q, but want %q", resultStr, want)
+		}
+	})
 }
 
 func TestCollectors_PartitioningByToSliceCollector(t *testing.T) {
@@ -338,4 +359,46 @@ func TestCollectors_SummarizingCollector(t *testing.T) {
 		t.Errorf("result.GetAverage() is %e, want %e", result.GetAverage(), wantAverage)
 	}
 	fmt.Printf("result : %v\n", result)
+}
+
+func TestCollectors_SummingCollector(t *testing.T) {
+	defer trace("TestCollectors_SummingCollector")()
+
+	t.Run("empty", func(t *testing.T) {
+		defer trace("TestCollectors_SummingCollector/empty")()
+		s := Empty[string]()
+		sum := CollectByCollector(s,
+			SummingCollector(func(t string) int {
+				return len(t)
+			}),
+		)
+
+		if sum != 0 {
+			t.Errorf("sum is %d, want 0", sum)
+		}
+	})
+
+	t.Run("file lines", func(t *testing.T) {
+		defer trace("TestCollectors_SummingCollector/file lines")()
+
+		s, err := FileLines("testdata/alice.txt")
+		if err != nil {
+			t.Fatalf("FileLines failed: %v", err)
+		}
+		count := s.Count()
+
+		s, err = FileLines("testdata/alice.txt")
+		if err != nil {
+			t.Fatalf("FileLines failed: %v", err)
+		}
+		count2 := CollectByCollector(s,
+			SummingCollector(func(t string) int {
+				return 1
+			}),
+		)
+
+		if count2 != count {
+			t.Errorf("count2 is %d, want %d", count2, count)
+		}
+	})
 }

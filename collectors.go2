@@ -348,8 +348,8 @@ func SummarizingCollector[T any, R Number](
 	}
 }
 
-// SummingCollector returns a Collector that produces the sum of a 
-// number-valued function applied to the input elements. If no elements are 
+// SummingCollector returns a Collector that produces the sum of a
+// number-valued function applied to the input elements. If no elements are
 // present, the result is 0.
 func SummingCollector[T any, R Number](
 	mapper Function[T, R],
@@ -369,4 +369,13 @@ func SummingCollector[T any, R Number](
 			return *a
 		},
 	}
+}
+
+// CountingCollector returns a Collector accepting elements of type T that
+// counts the number of input elements. If no elements are present, the result
+// is 0.
+func CountingCollector[T any, R Number]() *Collector[T, *R, R] {
+	return SummingCollector[T, R](
+		func(t T) R { return 1 },
+	)
 }
