@@ -384,6 +384,20 @@ func TestExample_RandomNumbers(t *testing.T) {
 	})
 }
 
+func TestEample_Pi(t *testing.T) {
+	defer trace("TestExample_Pi")()
+
+	result := CollectByCollector(
+		RangeClosed[float64](0, 1_000_000).Parallel(),
+		SummingCollector(
+			func(k float64) float64 {
+				return 4 * math.Pow(-1, k) / (2*k + 1)
+			}),
+	)
+	fmt.Println(result)
+
+}
+
 /*
 func TestExample_08(t *testing.T) {
 	defer trace("TestExample_08:ToMapCollector")()
