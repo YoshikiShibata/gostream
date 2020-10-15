@@ -53,6 +53,8 @@ parameter is a `Stream`:
 - `Generate`
 - `Concat`
 - `Sum`
+- `Min`
+- `Max`
 
 For `CollectByCollector` function, following functions as a `Collector` are provided:
 

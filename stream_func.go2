@@ -577,3 +577,21 @@ func RangeClosed[T Number](
 		},
 	).Limit(int(endInclusive - startInclusive + 1))
 }
+
+// Max returns the maximum element of a stream.
+func Max[T Number](
+	stream Stream[T],
+) *Optional[T] {
+	return stream.Max(func(x, y T) bool {
+		return x < y
+	})
+}
+
+// Min returns the minimum element of a stream.
+func Min[T Number](
+	stream Stream[T],
+) *Optional[T] {
+	return stream.Min(func(x, y T) bool {
+		return x < y
+	})
+}

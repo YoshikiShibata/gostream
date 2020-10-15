@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func trace(name string) func() {
@@ -407,6 +408,8 @@ func TestStream_FlatMapFunc(t *testing.T) {
 }
 
 func TestStream_RangeFunc(t *testing.T) {
+	defer trace("TestStream_RangeFunc")()
+
 	rangeValues := Range(0, 100).ToSlice()
 
 	if len(rangeValues) != 100 {
@@ -420,6 +423,8 @@ func TestStream_RangeFunc(t *testing.T) {
 }
 
 func TestStream_RangeClosedFunc(t *testing.T) {
+	defer trace("TestStream_RangeClosedFunc")()
+
 	rangeValues := RangeClosed(0, 99).ToSlice()
 
 	if len(rangeValues) != 100 {
@@ -428,6 +433,104 @@ func TestStream_RangeClosedFunc(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		if rangeValues[i] != i {
 			t.Errorf("rangeValues[%d] is %d, want %[1]d", i, rangeValues[i])
+		}
+	}
+}
+
+func TestStream_MaxFunc(t *testing.T) {
+	defer trace("TestStream_MaxFunc")()
+
+	rand.Seed(time.Now().Unix())
+
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
+		wantSet := false
+
+		for i := 0; i < tc.dataSize; i++ {
+			r := rand.Int()
+			data = append(data, r)
+			if !wantSet {
+				want = r
+				wantSet = true
+				continue
+			}
+			if r > want {
+				want = r
+			}
+		}
+
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			max := Max(s)
+			if max.IsPresent() != tc.present {
+				t.Errorf("max.IsPresent() is %t, want %t",
+					max.IsPresent(), tc.present)
+			}
+
+			if tc.present && max.Get() != want {
+				t.Errorf("max.Get() is %d, want %d", max.Get(), want)
+			}
+		}
+	}
+}
+
+func TestStream_MinFunc(t *testing.T) {
+	defer trace("TestStream_MinFunc")()
+
+	rand.Seed(time.Now().Unix())
+
+	for _, tc := range [...]struct {
+		dataSize int
+		present  bool
+	}{
+		{dataSize: 0, present: false},
+		{dataSize: 1, present: true},
+		{dataSize: 1000, present: true},
+	} {
+		var data []int
+		var want int
+		wantSet := false
+
+		for i := 0; i < tc.dataSize; i++ {
+			r := rand.Int()
+			data = append(data, r)
+			if !wantSet {
+				want = r
+				wantSet = true
+				continue
+			}
+			if r < want {
+				want = r
+			}
+		}
+
+		for _, parallel := range [...]bool{false, true} {
+			s := Of(data...)
+			if parallel {
+				s = s.Parallel()
+			}
+
+			min := Min(s)
+			if min.IsPresent() != tc.present {
+				t.Errorf("min.IsPresent() is %t, want %t",
+					min.IsPresent(), tc.present)
+			}
+
+			if tc.present && min.Get() != want {
+				t.Errorf("min.Get() is %d, want %d", min.Get(), want)
+			}
 		}
 	}
 }
