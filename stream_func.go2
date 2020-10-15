@@ -549,3 +549,31 @@ func Sum[T Number](stream Stream[T]) T {
 	close(sums)
 	return sum
 }
+
+// Range returns a sequential ordered Stream from startInclusive to
+// endExclusive (exclusive) by an incremental step of 1.
+func Range[T Number](
+	startInclusive T,
+	endExclusive T,
+) Stream[T] {
+	return Iterate(
+		startInclusive,
+		func(t T) T {
+			return t + 1
+		},
+	).Limit(int(endExclusive - startInclusive))
+}
+
+// RangeClosed returns a sequential ordered Stream from staticInclusive to
+// endInclusive (inclusive) by an incremental step of 1.
+func RangeClosed[T Number](
+	startInclusive T,
+	endInclusive T,
+) Stream[T] {
+	return Iterate(
+		startInclusive,
+		func(t T) T {
+			return t + 1
+		},
+	).Limit(int(endInclusive - startInclusive + 1))
+}

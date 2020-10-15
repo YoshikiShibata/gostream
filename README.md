@@ -13,6 +13,8 @@ following functions are available:
 - `Of` function creates a `Stream` from a slice. 
 - `Builder` can be used to create a `Stream` by adding elements.
 - `FileLines` function returns a `Stream` of lines of a file.
+- `Range` function returns a `Stream` by an incremental step of 1.
+- `RangeClosed` function returns a `Stream` by an incremental step of 1.
 
 `Stream` provides following methods:
 

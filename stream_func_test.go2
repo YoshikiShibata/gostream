@@ -405,3 +405,29 @@ func TestStream_FlatMapFunc(t *testing.T) {
 		t.Errorf("string(result) is %q, want %q", string(result), want)
 	}
 }
+
+func TestStream_RangeFunc(t *testing.T) {
+	rangeValues := Range(0, 100).ToSlice()
+
+	if len(rangeValues) != 100 {
+		t.Fatalf("len(rangeValues) is %v, want 100", len(rangeValues))
+	}
+	for i := 0; i < 100; i++ {
+		if rangeValues[i] != i {
+			t.Errorf("rangeValues[%d] is %d, want %[1]d", i, rangeValues[i])
+		}
+	}
+}
+
+func TestStream_RangeClosedFunc(t *testing.T) {
+	rangeValues := RangeClosed(0, 99).ToSlice()
+
+	if len(rangeValues) != 100 {
+		t.Fatalf("len(rangeValues) is %v, want 100", len(rangeValues))
+	}
+	for i := 0; i < 100; i++ {
+		if rangeValues[i] != i {
+			t.Errorf("rangeValues[%d] is %d, want %[1]d", i, rangeValues[i])
+		}
+	}
+}
