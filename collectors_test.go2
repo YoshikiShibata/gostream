@@ -233,7 +233,7 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 		}
 	})
 
-	t.Run("Slice", func(t *testing.T) {
+	t.Run("Counting", func(t *testing.T) {
 		defer trace("TestCollectors_GroupingByCollector/Counting")()
 
 		result := CollectByCollector(
@@ -248,6 +248,52 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 				CountingCollector[int, int]()),
 		)
 		want := "map[even:5 odd:5]"
+		resultStr := fmt.Sprintf("%v", result)
+		if resultStr != want {
+			t.Errorf("resultStr is %q, but want %q", resultStr, want)
+		}
+	})
+
+	t.Run("MaxBy", func(t *testing.T) {
+		defer trace("TestCollectors_GroupingByCollector/MaxBy")()
+
+		result := CollectByCollector(
+			Of(data...),
+			GroupingByCollector(
+				func(t int) string {
+					if t&1 == 0 {
+						return "even"
+					}
+					return "odd"
+				},
+				MaxByCollector(func(x, y int) bool {
+					return x < y
+				})),
+		)
+		want := "map[even:Optional[10] odd:Optional[9]]"
+		resultStr := fmt.Sprintf("%v", result)
+		if resultStr != want {
+			t.Errorf("resultStr is %q, but want %q", resultStr, want)
+		}
+	})
+
+	t.Run("MinBy", func(t *testing.T) {
+		defer trace("TestCollectors_GroupingByCollector/MaxBy")()
+
+		result := CollectByCollector(
+			Of(data...),
+			GroupingByCollector(
+				func(t int) string {
+					if t&1 == 0 {
+						return "even"
+					}
+					return "odd"
+				},
+				MinByCollector(func(x, y int) bool {
+					return x < y
+				})),
+		)
+		want := "map[even:Optional[2] odd:Optional[1]]"
 		resultStr := fmt.Sprintf("%v", result)
 		if resultStr != want {
 			t.Errorf("resultStr is %q, but want %q", resultStr, want)

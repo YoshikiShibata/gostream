@@ -70,3 +70,5 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `CountingCollector`
 - `ReducingCollector`
 - `ReducingToOptionalCollector`
+- `MaxByCollector`
+- `MinByCollector`

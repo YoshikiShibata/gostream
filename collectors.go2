@@ -434,10 +434,34 @@ func ReducingToOptionalCollector[T any](
 	}
 }
 
-/*
-func MaxByCollector[T](
-less Less[t],
-) *Collector[T, ???, *Optional[T]] {
-
+// MaxByCollector returns a Collector that produces the maximal element
+// according to a given Less, described as an *Optional[T].
+func MaxByCollector[T any](
+	less Less[T],
+) *Collector[T, *Optional[T], *Optional[T]] {
+	return ReducingToOptionalCollector[T](
+		func(a, b T) T {
+			if less(a, b) {
+				return b
+			} else {
+				return a
+			}
+		},
+	)
 }
-*/
+
+// MinByCollector returns a Collector that produces the minimal element
+// according to a given Less, described as an *Optional[T].
+func MinByCollector[T any](
+	less Less[T],
+) *Collector[T, *Optional[T], *Optional[T]] {
+	return ReducingToOptionalCollector[T](
+		func(a, b T) T {
+			if less(a, b) {
+				return a
+			} else {
+				return b
+			}
+		},
+	)
+}
