@@ -313,6 +313,77 @@ func TestExample_07(t *testing.T) {
 	fmt.Printf("result : %v\n", result)
 }
 
+func TestExample_RandomNumbers(t *testing.T) {
+	defer trace("TestExample_RandomNumbers")()
+
+	random := func(a, c, m, seed int64) Stream[int64] {
+		return Iterate[int64](seed, func(x int64) int64 {
+			return (a*x + c) % m
+		})
+	}
+	t.Run("Simple Generation", func(t *testing.T) {
+		defer trace("TestExample_RandomNumbers/Simple Generation")()
+
+		const noOfRandoms = 100
+
+		randomStream := random(25214903917, 11, 1<<48, 0)
+		randoms := randomStream.Limit(noOfRandoms).ToSlice()
+
+		if len(randoms) != noOfRandoms {
+			t.Errorf("len(randoms) is %d, want %d", len(randoms), noOfRandoms)
+		}
+	})
+
+	t.Run("Negative Values", func(t *testing.T) {
+		defer trace("TestExample_RandomNumbers/Negative Values")()
+
+		const noOfRandoms = 100
+
+		randomStream := random(25214903917, 11, 1<<48, 0)
+		randoms := randomStream.Limit(noOfRandoms).ToSlice()
+
+		for _, v := range randoms {
+			if v < 0 {
+				return
+			}
+		}
+		t.Errorf("No negative value found")
+	})
+
+	t.Run("Million Values", func(t *testing.T) {
+		defer trace("TestExample_RandomNumbers/Milion Values")()
+
+		const noOfRandoms = 1_000_000
+
+		randomStream := random(25214903917, 11, math.MinInt64, 0).
+			Limit(noOfRandoms)
+
+		const length = 20
+		interval := int64(math.MaxInt64 / (length / 2))
+		classifier := func(value int64) int {
+			for i := 0; i < length; i++ {
+				lower := math.MinInt64 + int64(i)*interval
+				upper := lower + interval
+
+				if lower <= value && value < upper {
+					return i
+				}
+			}
+			panic("Impossible")
+		}
+
+		result := CollectByCollector(
+			randomStream,
+			GroupingByCollector(
+				classifier,
+				CountingCollector[int64, int](),
+			),
+		)
+
+		fmt.Println(result)
+	})
+}
+
 /*
 func TestExample_08(t *testing.T) {
 	defer trace("TestExample_08:ToMapCollector")()
