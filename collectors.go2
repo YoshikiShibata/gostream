@@ -4,6 +4,7 @@ package gostream
 
 import (
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -491,6 +492,63 @@ func AveragingInt64Collector[T any](
 				return 0
 			}
 			return float64((*a)[0]) / float64((*a)[1])
+		},
+	}
+}
+
+func AveragingFloat64Collector[T any](
+	mapper Function[T, float64],
+) *Collector[T, *[4]float64, float64] {
+	// sumWithCompensation incorporates a new float64 value using Kahan
+	// summation/compensation summation.
+	//
+	// High-order bits of the sum are in (*intermediateSum)[0], low-order bits
+	// of the sum are in (*intermediateSum)[1], any additional elements are
+	// application-specific.
+	sumWithCompensation := func(intermediateSum *[4]float64, value float64) {
+		tmp := value - (*intermediateSum)[1]
+		sum := (*intermediateSum)[0]
+		velvel := sum + tmp
+		(*intermediateSum)[1] = (velvel - sum) - tmp
+		(*intermediateSum)[0] = velvel
+	}
+
+	// If the compensated sum is spuriously NaN from accumulating one or
+	// more same-signed infinite values, return the correctly-signed infinity
+	// stored in the simple sum.
+	computeFinalSum := func(summands *[4]float64) float64 {
+		tmp := (*summands)[0] + (*summands)[1]
+		simpleSum := (*summands)[3]
+		if math.IsNaN(tmp) &&
+			(math.IsInf(simpleSum, 1) || math.IsInf(simpleSum, -1)) {
+			return simpleSum
+		}
+		return tmp
+	}
+
+	return &Collector[T, *[4]float64, float64]{
+		supplier: func() *[4]float64 {
+			return new([4]float64)
+		},
+		accumulator: func(a *[4]float64, t T) {
+			val := mapper(t)
+
+			sumWithCompensation(a, val)
+			(*a)[2]++
+			(*a)[3] += val
+		},
+		combiner: func(a, b *[4]float64) *[4]float64 {
+			sumWithCompensation(a, (*b)[0])
+			sumWithCompensation(a, (*b)[1])
+			(*a)[2] += (*b)[2]
+			(*a)[3] += (*b)[3]
+			return a
+		},
+		finisher: func(a *[4]float64) float64 {
+			if (*a)[2] == 0 {
+				return 0
+			}
+			return computeFinalSum(a) / (*a)[2]
 		},
 	}
 }

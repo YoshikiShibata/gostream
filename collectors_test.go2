@@ -450,7 +450,7 @@ func TestCollectors_SummingCollector(t *testing.T) {
 }
 
 func TestCollectors_AveragingInt64Collector(t *testing.T) {
-	defer trace("TestCollectors_SummingCollector")()
+	defer trace("TestCollectors_AveragingInt64Collector")()
 
 	start := -777
 	end := 9999
@@ -458,6 +458,29 @@ func TestCollectors_AveragingInt64Collector(t *testing.T) {
 		RangeClosed(start, end).Parallel(),
 		AveragingInt64Collector(func(t int) int64 {
 			return int64(t)
+		}),
+	)
+
+	sum := 0
+	for i := start; i <= end; i++ {
+		sum += i
+	}
+	count := end - start + 1
+	wantAverage := float64(sum) / float64(count)
+	if average != wantAverage {
+		t.Errorf("average is %e, want %e", average, wantAverage)
+	}
+}
+
+func TestCollectors_AveragingFloat64Collector(t *testing.T) {
+	defer trace("TestCollectors_AveragingFloat64Collector")()
+
+	start := -777
+	end := 9999
+	average := CollectByCollector(
+		RangeClosed(start, end).Parallel(),
+		AveragingFloat64Collector(func(t int) float64 {
+			return float64(t)
 		}),
 	)
 

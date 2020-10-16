@@ -1,3 +1,0 @@
-package gostream
-
-var debug bool
