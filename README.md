@@ -76,3 +76,4 @@ For `CollectByCollector` function, following functions as a `Collector` are prov
 - `ReducingToOptionalCollector`
 - `MaxByCollector`
 - `MinByCollector`
+- `AveragingInt64Collector`

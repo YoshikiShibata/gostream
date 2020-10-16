@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-// ToSliceCollector returns a Collector for T.
+// ToSliceCollector returns a Collector that accumulates the input elements
+// into a new slice.
 func ToSliceCollector[T any]() *Collector[T, *[]T, []T] {
 	return &Collector[T, *[]T, []T]{
 		supplier: func() *[]T {
@@ -464,4 +465,32 @@ func MinByCollector[T any](
 			}
 		},
 	)
+}
+
+// AveragingInt64 returns a Collector that produces the arithmetic mean of an
+// an int64-valued function applied to the input elements. If no elements are
+// present, the result is 0.
+func AveragingInt64Collector[T any](
+	mapper Function[T, int64],
+) *Collector[T, *[2]int64, float64] {
+	return &Collector[T, *[2]int64, float64]{
+		supplier: func() *[2]int64 {
+			return new([2]int64)
+		},
+		accumulator: func(a *[2]int64, t T) {
+			(*a)[0] += mapper(t)
+			(*a)[1] += 1
+		},
+		combiner: func(a, b *[2]int64) *[2]int64 {
+			(*a)[0] += (*b)[0]
+			(*a)[1] += (*b)[1]
+			return a
+		},
+		finisher: func(a *[2]int64) float64 {
+			if (*a)[1] == 0 {
+				return 0
+			}
+			return float64((*a)[0]) / float64((*a)[1])
+		},
+	}
 }
