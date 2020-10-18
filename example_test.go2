@@ -192,7 +192,7 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("ToMapCollector", func(t *testing.T) {
-		defer trace("TestExample_00/Joining")()
+		defer trace("TestExample_00/ToMapCollector")()
 
 		result := CollectByCollector(
 			Of(words...),
@@ -213,6 +213,24 @@ func TestExample_00(t *testing.T) {
 		}
 	})
 
+	t.Run("js8ri ch02_ex13", func(t *testing.T) {
+		defer trace("TestExample_00/js8ri_ch02_ex13")()
+
+		shortWords := Of(words...).Filter(func(t string) bool {
+			return len(t) < 12
+		})
+
+		result := CollectByCollector(
+			shortWords,
+			GroupingByCollector(
+				func(t string) int {
+					return len(t)
+				},
+				CountingCollector[string, int](),
+			),
+		)
+		fmt.Printf("result : %v\n", result)
+	})
 }
 
 func TestExample_01(t *testing.T) {
