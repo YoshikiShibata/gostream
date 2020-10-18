@@ -1,7 +1,7 @@
 # gostream
 
-`gostream` package provides a Stream API similar to Java, using the Go2 
-Generic. This package is an experimental implementation for me to learn the Go2 Generic.
+`gostream` package provides a Stream API similar to Java, using [the Go2 
+Generic](https://go.googlesource.com/proposal/+/refs/heads/master/design/go2draft-type-parameters.md). This package is an experimental implementation for me to learn the Go2 Generic.
 
 **CAUTION: this package is under construction**
 
