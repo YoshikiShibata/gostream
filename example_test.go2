@@ -231,6 +231,27 @@ func TestExample_00(t *testing.T) {
 		)
 		fmt.Printf("result : %v\n", result)
 	})
+
+	t.Run("Effective Java, 3rd p.212", func(t *testing.T) {
+		defer trace("TestExample_00/effective_java")()
+
+		freq := CollectByCollector(
+			Of(words...),
+			GroupingByCollector(
+				func(w string) string { return strings.ToLower(w) },
+				CountingCollector[string, int](),
+			))
+		keySet := make([]string, 0, len(freq))
+		for k, _ := range freq {
+			keySet = append(keySet, k)
+		}
+		result := Of(keySet...).Sorted(
+			func(k1, k2 string) bool {
+				return freq[k1] > freq[k2]
+			}).Limit(10).ToSlice()
+
+		fmt.Printf("result : %v\n", result)
+	})
 }
 
 func TestExample_01(t *testing.T) {
