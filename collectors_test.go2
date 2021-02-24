@@ -245,7 +245,7 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 					}
 					return "odd"
 				},
-				CountingCollector[int, int]()),
+				CountingCollector[int]()),
 		)
 		want := "map[even:5 odd:5]"
 		resultStr := fmt.Sprintf("%v", result)

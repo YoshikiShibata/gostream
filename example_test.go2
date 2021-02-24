@@ -226,7 +226,7 @@ func TestExample_00(t *testing.T) {
 				func(t string) int {
 					return len(t)
 				},
-				CountingCollector[string, int](),
+				CountingCollector[string](),
 			),
 		)
 		fmt.Printf("result : %v\n", result)
@@ -239,7 +239,7 @@ func TestExample_00(t *testing.T) {
 			Of(words...),
 			GroupingByCollector(
 				func(w string) string { return strings.ToLower(w) },
-				CountingCollector[string, int](),
+				CountingCollector[string](),
 			))
 		keySet := make([]string, 0, len(freq))
 		for k, _ := range freq {
@@ -415,7 +415,7 @@ func TestExample_RandomNumbers(t *testing.T) {
 			randomStream,
 			GroupingByCollector(
 				classifier,
-				CountingCollector[int64, int](),
+				CountingCollector[int64](),
 			),
 		)
 
