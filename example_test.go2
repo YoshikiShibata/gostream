@@ -5,8 +5,6 @@ package gostream
 import (
 	"bufio"
 	"fmt"
-	// "golang.org/x/text/language"
-	// "golang.org/x/text/language/display"
 	"math"
 	"math/rand"
 	"os"
@@ -14,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	// "golang.org/x/text/language"
+	// "golang.org/x/text/language/display"
 )
 
 func TestExample_00(t *testing.T) {
@@ -438,6 +438,9 @@ func TestEample_Pi(t *testing.T) {
 }
 
 /*
+ * Cannot compile, because "golang.org/x/text/language/display" contains
+ * multiple packages.
+
 func TestExample_08(t *testing.T) {
 	defer trace("TestExample_08:ToMapCollector")()
 
