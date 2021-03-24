@@ -1,4 +1,4 @@
-// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+// Copyright © 2020, 2021 Yoshiki Shibata. All rights reserved.
 
 package gostream
 
@@ -329,7 +329,7 @@ func TestStream_GenerateFunc(t *testing.T) {
 
 		var results []int
 
-		Generate[int](rand.Int).Limit(100).ForEach(func(v int) {
+		Generate(rand.Int).Limit(100).ForEach(func(v int) {
 			results = append(results, v)
 		})
 
