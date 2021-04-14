@@ -1,4 +1,4 @@
-// Copyright © 2020 Yoshiki Shibata. All rights reserved.
+// Copyright © 2020, 2021 Yoshiki Shibata. All rights reserved.
 
 package gostream
 
@@ -356,7 +356,7 @@ func TestExample_RandomNumbers(t *testing.T) {
 	defer trace("TestExample_RandomNumbers")()
 
 	random := func(a, c, m, seed int64) Stream[int64] {
-		return Iterate[int64](seed, func(x int64) int64 {
+		return Iterate(seed, func(x int64) int64 {
 			return (a*x + c) % m
 		})
 	}
