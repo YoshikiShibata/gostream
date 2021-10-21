@@ -3,9 +3,10 @@
 package gostream
 
 import (
-	"alg"
 	"fmt"
 	"math"
+
+	"github.com/YoshikiShibata/gostream/alg"
 )
 
 type SummaryStatistics[T Number] struct {

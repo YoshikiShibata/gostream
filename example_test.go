@@ -8,10 +8,11 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/YoshikiShibata/gostream/slices"
 	// "golang.org/x/text/language"
 	// "golang.org/x/text/language/display"
 )

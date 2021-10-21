@@ -4,11 +4,12 @@ package gostream
 
 import (
 	"math/rand"
-	"slices"
 	"sort"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/YoshikiShibata/gostream/slices"
 )
 
 func TestStream_ForEach(t *testing.T) {

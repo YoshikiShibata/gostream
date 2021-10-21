@@ -5,11 +5,12 @@ package gostream
 import (
 	"fmt"
 	"math/rand"
-	"slices"
 	"sort"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/YoshikiShibata/gostream/slices"
 )
 
 func trace(name string) func() {
