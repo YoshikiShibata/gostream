@@ -7,8 +7,9 @@
 package slices
 
 import (
+	"constraints"
+
 	"github.com/YoshikiShibata/gostream/alg"
-	"github.com/YoshikiShibata/gostream/constraints"
 )
 
 // Equal reports whether two slices are equal: the same length and all
