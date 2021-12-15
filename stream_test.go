@@ -5,7 +5,6 @@ package gostream
 import (
 	"math/rand"
 	"sort"
-	"strconv"
 	"testing"
 	"time"
 
@@ -13,16 +12,12 @@ import (
 )
 
 func TestStream_ForEach(t *testing.T) {
-	defer trace("TestStream_ForEach")()
-
 	data := make([]int, 1000)
 	for i := 0; i < len(data); i++ {
 		data[i] = i
 	}
 
 	t.Run("serial", func(t *testing.T) {
-		defer trace("TestStream_ForEach/serial")()
-
 		want := 0
 		Of(data...).ForEach(func(v int) {
 			if v != want {
@@ -33,8 +28,6 @@ func TestStream_ForEach(t *testing.T) {
 	})
 
 	t.Run("parallel", func(t *testing.T) {
-		defer trace("TestStream_ForEach/parallel")()
-
 		resultChan := make(chan int, 1000)
 
 		Of(data...).Parallel().ForEach(func(v int) {
@@ -68,8 +61,6 @@ func TestStream_ForEach(t *testing.T) {
 }
 
 func TestStream_Filter(t *testing.T) {
-	defer trace("TestStream_Filter")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -105,8 +96,6 @@ func TestStream_Filter(t *testing.T) {
 }
 
 func TestStream_Sorted(t *testing.T) {
-	defer trace("TestStream_Sorted")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -140,8 +129,6 @@ func TestStream_Sorted(t *testing.T) {
 }
 
 func TestStream_Peek(t *testing.T) {
-	defer trace("TestStream_Peek")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -157,11 +144,7 @@ func TestStream_Peek(t *testing.T) {
 			want = append(want, i)
 		}
 
-		ds := strconv.Itoa(tc.dataSize)
-
 		t.Run("serial", func(t *testing.T) {
-			defer trace("TestStream_Peek/serial:" + ds)()
-
 			s := Of(data...)
 
 			peekedChan := make(chan int, tc.dataSize)
@@ -188,8 +171,6 @@ func TestStream_Peek(t *testing.T) {
 		})
 
 		t.Run("parallel", func(t *testing.T) {
-			defer trace("TestStream_Peek/parallel:" + ds)()
-
 			s := Of(data...).Parallel()
 
 			peekedChan := make(chan int, tc.dataSize)
@@ -229,8 +210,6 @@ func TestStream_Peek(t *testing.T) {
 }
 
 func TestStream_Limit(t *testing.T) {
-	defer trace("TestStream_Limit")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 		limit    int
@@ -264,8 +243,6 @@ func TestStream_Limit(t *testing.T) {
 }
 
 func TestStream_Skip(t *testing.T) {
-	defer trace("TestStream_Skip")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 		skip     int
@@ -299,8 +276,6 @@ func TestStream_Skip(t *testing.T) {
 }
 
 func TestStream_ToSlice(t *testing.T) {
-	defer trace("TestStream_ToSlice")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -331,8 +306,6 @@ func TestStream_ToSlice(t *testing.T) {
 }
 
 func TestStream_Reduce(t *testing.T) {
-	defer trace("TestStream_Reduce")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -364,8 +337,6 @@ func TestStream_Reduce(t *testing.T) {
 }
 
 func TestStream_ReduceToOptional(t *testing.T) {
-	defer trace("TestStream_ReduceToOptional")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 		present  bool
@@ -404,8 +375,6 @@ func TestStream_ReduceToOptional(t *testing.T) {
 }
 
 func TestStream_Min(t *testing.T) {
-	defer trace("TestStream_Min")()
-
 	rand.Seed(time.Now().Unix())
 
 	for _, tc := range [...]struct {
@@ -455,8 +424,6 @@ func TestStream_Min(t *testing.T) {
 }
 
 func TestStream_Max(t *testing.T) {
-	defer trace("TestStream_Max")()
-
 	rand.Seed(time.Now().Unix())
 
 	for _, tc := range [...]struct {
@@ -506,8 +473,6 @@ func TestStream_Max(t *testing.T) {
 }
 
 func TestStream_Count(t *testing.T) {
-	defer trace("TestStream_Count")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -536,8 +501,6 @@ func TestStream_Count(t *testing.T) {
 }
 
 func TestStream_AnyMatch(t *testing.T) {
-	defer trace("TestStream_AnyMatch")()
-
 	for _, tc := range [...]struct {
 		dataSize  int
 		matchData int
@@ -574,8 +537,6 @@ func TestStream_AnyMatch(t *testing.T) {
 }
 
 func TestStream_AllMatch(t *testing.T) {
-	defer trace("TestStream_AllMatch")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 		match    bool
@@ -610,8 +571,6 @@ func TestStream_AllMatch(t *testing.T) {
 }
 
 func TestStream_NoneMatch(t *testing.T) {
-	defer trace("TestStream_NoneMatch")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 		match    bool
@@ -653,8 +612,6 @@ func TestStream_NoneMatch(t *testing.T) {
 }
 
 func TestStream_FindFirst(t *testing.T) {
-	defer trace("TestStream_FindFirst")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
