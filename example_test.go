@@ -37,15 +37,15 @@ func TestExample_00(t *testing.T) {
 		count := Of(words...).Parallel().Filter(func(w string) bool {
 			return len(w) > 12
 		}).Count()
-		fmt.Printf("count is %d\n", count)
+		t.Logf("count is %d\n", count)
 	})
 
 	t.Run("Map", func(t *testing.T) {
+		tt := t
 		Map(Of(words...), strings.ToLower).
 			Limit(10).ForEach(func(t string) {
-			fmt.Printf("%s ", t)
+			tt.Logf("%s ", t)
 		})
-		fmt.Println()
 	})
 
 	t.Run("first runes", func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestExample_00(t *testing.T) {
 			panic("emty string")
 		}).Limit(10).ToSlice()
 
-		fmt.Printf("first runes: %c\n", firstRunes)
+		t.Logf("first runes: %c\n", firstRunes)
 	})
 
 	runeStream := func(s string) Stream[rune] {
@@ -96,13 +96,13 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("Sorted", func(t *testing.T) {
+		tt := t
 		Of(words...).Sorted(func(t1, t2 string) bool {
 			// reversed
 			return len(t2) < len(t1)
 		}).Limit(10).ForEach(func(t string) {
-			fmt.Printf("%s ", t)
+			tt.Logf("%s ", t)
 		})
-		fmt.Println()
 	})
 
 	t.Run("Max", func(t *testing.T) {
@@ -110,7 +110,7 @@ func TestExample_00(t *testing.T) {
 			return t1 < t2
 		})
 		if largest.IsPresent() {
-			fmt.Printf("largest: %s\n", largest.Get())
+			t.Logf("largest: %s\n", largest.Get())
 		}
 	})
 
@@ -120,7 +120,7 @@ func TestExample_00(t *testing.T) {
 		}).FindFirst()
 
 		if startsWithQ.IsPresent() {
-			fmt.Printf("startsWithQ: %s\n", startsWithQ.Get())
+			t.Logf("startsWithQ: %s\n", startsWithQ.Get())
 		}
 
 		startsWithQ = Of(words...).Parallel().Filter(func(t string) bool {
@@ -128,7 +128,7 @@ func TestExample_00(t *testing.T) {
 		}).FindAny()
 
 		if startsWithQ.IsPresent() {
-			fmt.Printf("startsWithQ: %s\n", startsWithQ.Get())
+			t.Logf("startsWithQ: %s\n", startsWithQ.Get())
 		}
 
 		aWordStartWithQ := Of(words...).Parallel().AnyMatch(func(t string) bool {
@@ -167,7 +167,7 @@ func TestExample_00(t *testing.T) {
 			JoiningCollector(" "),
 		)
 
-		fmt.Printf("result := %s\n", result)
+		t.Logf("result := %s\n", result)
 	})
 
 	t.Run("ToMapCollector", func(t *testing.T) {
@@ -182,7 +182,7 @@ func TestExample_00(t *testing.T) {
 
 		count := 0
 		for k, v := range result {
-			fmt.Printf("%q : %d\n", k, v)
+			t.Logf("%q : %d\n", k, v)
 			count++
 			if count > 10 {
 				return
@@ -204,7 +204,7 @@ func TestExample_00(t *testing.T) {
 				CountingCollector[string](),
 			),
 		)
-		fmt.Printf("result : %v\n", result)
+		t.Logf("result : %v\n", result)
 	})
 
 	t.Run("Effective Java, 3rd p.212", func(t *testing.T) {
@@ -223,58 +223,59 @@ func TestExample_00(t *testing.T) {
 				return freq[k1] > freq[k2]
 			}).Limit(10).ToSlice()
 
-		fmt.Printf("result : %v\n", result)
+		t.Logf("result : %v\n", result)
 	})
 }
 
 func TestExample_01(t *testing.T) {
+	tt := t
 	// generate same value repeatedly
 	Generate(func() string {
 		return "Echo"
 	}).Limit(10).ForEach(func(t string) {
-		fmt.Printf("%s ", t)
+		tt.Logf("%s ", t)
 	})
-	fmt.Println()
 }
 
 func TestExample_02(t *testing.T) {
+	tt := t
 	// generate random stream
 	Generate(rand.Int).Limit(10).ForEach(func(t int) {
-		fmt.Printf("%d ", t)
+		tt.Logf("%d ", t)
 	})
-	fmt.Println()
 
 	Generate(rand.Float64).Limit(10).ForEach(func(t float64) {
-		fmt.Printf("%e ", t)
+		tt.Logf("%e ", t)
 	})
-	fmt.Println()
 }
 
 func TestExample_03(t *testing.T) {
+	tt := t
 	// generate 0, 1, 2, 3, 4, 5, ...
 	Iterate(0, func(t int) int {
 		return t + 1
 	}).Limit(10).ForEach(func(t int) {
-		fmt.Printf("%d ", t)
+		tt.Logf("%d ", t)
 	})
-	fmt.Println()
 }
 
 func TestExample_04(t *testing.T) {
+	tt := t
 	s, err := FileLines("testdata/alice.txt")
 	if err != nil {
-		t.Fatalf("LinesOfFile failed: %v", err)
+		tt.Fatalf("LinesOfFile failed: %v", err)
 	}
 	s.Limit(10).ForEach(func(t string) {
-		fmt.Println(t)
+		tt.Logf("%v\n", t)
 	})
 }
 
 func TestExample_05(t *testing.T) {
+	tt := t
 	Iterate(1.0, func(t float64) float64 {
 		return t * 2
 	}).Peek(func(t float64) {
-		fmt.Printf("Fetching %e\n", t)
+		tt.Logf("Fetching %e\n", t)
 	}).Limit(10).ForEach(func(t float64) {
 		time.Sleep(time.Second / 2)
 	})
@@ -308,7 +309,7 @@ func TestExample_07(t *testing.T) {
 	a := OptionalFlatMap(OptionalOf(4.0), inverse)
 	result := OptionalFlatMap(a, squareRoot)
 
-	fmt.Printf("result : %v\n", result)
+	t.Logf("result : %v", result)
 }
 
 func TestExample_RandomNumbers(t *testing.T) {
@@ -370,7 +371,7 @@ func TestExample_RandomNumbers(t *testing.T) {
 			),
 		)
 
-		fmt.Println(result)
+		t.Logf("%v", result)
 	})
 }
 
@@ -382,7 +383,7 @@ func TestEample_Pi(t *testing.T) {
 				return 4 * math.Pow(-1, k) / (2*k + 1)
 			}),
 	)
-	fmt.Println(result)
+	t.Logf("%v", result)
 
 }
 
@@ -410,5 +411,5 @@ func TestExample_08(t *testing.T) {
 		),
 	)
 
-	fmt.Println(result)
+	t.Logf("%v", result)
 }

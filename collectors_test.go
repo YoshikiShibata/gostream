@@ -367,7 +367,7 @@ func TestCollectors_SummarizingCollector(t *testing.T) {
 	if result.GetAverage() != wantAverage {
 		t.Errorf("result.GetAverage() is %e, want %e", result.GetAverage(), wantAverage)
 	}
-	fmt.Printf("result : %v\n", result)
+	t.Logf("result : %v\n", result)
 }
 
 func TestCollectors_SummingCollector(t *testing.T) {
