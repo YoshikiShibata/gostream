@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/YoshikiShibata/gostream/slices"
+	"golang.org/x/exp/slices"
 )
 
 func TestStream_MapFunc(t *testing.T) {

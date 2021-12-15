@@ -12,11 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/YoshikiShibata/gostream/slices"
+	"golang.org/x/exp/slices"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
-	// "golang.org/x/text/language"
-	// "golang.org/x/text/language/display"
 )
 
 func TestExample_00(t *testing.T) {

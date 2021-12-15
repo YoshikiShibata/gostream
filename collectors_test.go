@@ -9,7 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/YoshikiShibata/gostream/slices"
+	"golang.org/x/exp/slices"
+	// "github.com/YoshikiShibata/gostream/slices"
 )
 
 func TestCollectors_ToSliceCollector(t *testing.T) {
