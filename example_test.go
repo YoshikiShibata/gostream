@@ -375,7 +375,7 @@ func TestExample_RandomNumbers(t *testing.T) {
 
 func TestEample_Pi(t *testing.T) {
 	result := CollectByCollector(
-		RangeClosed[float64](0, 1_000_000).Parallel(),
+		RangeClosed[float64](0, 10_000_000).Parallel(),
 		SummingCollector(
 			func(k float64) float64 {
 				return 4 * math.Pow(-1, k) / (2*k + 1)
@@ -385,11 +385,6 @@ func TestEample_Pi(t *testing.T) {
 
 }
 
-/*
- * Cannot compile, because "golang.org/x/text/language/display" contains
- * multiple packages.
- */
-
 func TestExample_08(t *testing.T) {
 	locales := display.Supported.Tags()
 	en := display.English.Tags()
@@ -398,10 +393,10 @@ func TestExample_08(t *testing.T) {
 		Of(locales...),
 		ToMapCollector(
 			func(tag language.Tag) string {
-				return en.Name(tag)
+				return en.Name(tag) // key: English name
 			},
 			func(tag language.Tag) string {
-				return display.Self.Name(tag)
+				return display.Self.Name(tag) // value: its own language
 			},
 			func(existingValue, newValue string) string {
 				return existingValue
