@@ -13,13 +13,13 @@ import (
 	"time"
 
 	"github.com/YoshikiShibata/gostream/slices"
+	"golang.org/x/text/language"
+	"golang.org/x/text/language/display"
 	// "golang.org/x/text/language"
 	// "golang.org/x/text/language/display"
 )
 
 func TestExample_00(t *testing.T) {
-	defer trace("TestExample_00")()
-
 	f, err := os.Open("testdata/alice.txt")
 	if err != nil {
 		t.Fatalf("os.Open failed: %v\n", err)
@@ -34,27 +34,21 @@ func TestExample_00(t *testing.T) {
 	}
 
 	t.Run("Filter", func(t *testing.T) {
-		defer trace("TestExample_00/Filter")()
-
 		count := Of(words...).Parallel().Filter(func(w string) bool {
 			return len(w) > 12
 		}).Count()
-		fmt.Printf("count is %d\n", count)
+		t.Logf("count is %d\n", count)
 	})
 
 	t.Run("Map", func(t *testing.T) {
-		defer trace("TestExample_00/Map")()
-
+		tt := t
 		Map(Of(words...), strings.ToLower).
 			Limit(10).ForEach(func(t string) {
-			fmt.Printf("%s ", t)
+			tt.Logf("%s ", t)
 		})
-		fmt.Println()
 	})
 
 	t.Run("first runes", func(t *testing.T) {
-		defer trace("TestExample_00/firstrunes")()
-
 		firstRunes := Map(Of(words...), func(t string) rune {
 			for _, r := range t {
 				return r
@@ -62,7 +56,7 @@ func TestExample_00(t *testing.T) {
 			panic("emty string")
 		}).Limit(10).ToSlice()
 
-		fmt.Printf("first runes: %c\n", firstRunes)
+		t.Logf("first runes: %c\n", firstRunes)
 	})
 
 	runeStream := func(s string) Stream[rune] {
@@ -71,8 +65,6 @@ func TestExample_00(t *testing.T) {
 	}
 
 	t.Run("FlatMap", func(t *testing.T) {
-		defer trace("TestExample_00/FlatMap")()
-
 		result := FlatMap(Of("your", "boat"), runeStream).ToSlice()
 
 		resultStr := fmt.Sprintf("%c", result)
@@ -84,8 +76,6 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("Skip", func(t *testing.T) {
-		defer trace("TestExample_00/Skip")()
-
 		first100 := Of(words...).Limit(100).ToSlice()
 		skip10 := Of(words...).Skip(10).Limit(90).ToSlice()
 
@@ -95,8 +85,6 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("Concat", func(t *testing.T) {
-		defer trace("TestExample_00/Concat")()
-
 		result := Concat(runeStream("Hello"), runeStream("World")).ToSlice()
 
 		resultStr := fmt.Sprintf("%c", result)
@@ -108,37 +96,31 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("Sorted", func(t *testing.T) {
-		defer trace("TestExample_00/Sorted")()
-
+		tt := t
 		Of(words...).Sorted(func(t1, t2 string) bool {
 			// reversed
 			return len(t2) < len(t1)
 		}).Limit(10).ForEach(func(t string) {
-			fmt.Printf("%s ", t)
+			tt.Logf("%s ", t)
 		})
-		fmt.Println()
 	})
 
 	t.Run("Max", func(t *testing.T) {
-		defer trace("TestExample_00/Max")()
-
 		largest := Of(words...).Max(func(t1, t2 string) bool {
 			return t1 < t2
 		})
 		if largest.IsPresent() {
-			fmt.Printf("largest: %s\n", largest.Get())
+			t.Logf("largest: %s\n", largest.Get())
 		}
 	})
 
 	t.Run("FindFirst", func(t *testing.T) {
-		defer trace("TestExample_00/FindFirst")()
-
 		startsWithQ := Of(words...).Filter(func(t string) bool {
 			return strings.HasPrefix(t, "Q")
 		}).FindFirst()
 
 		if startsWithQ.IsPresent() {
-			fmt.Printf("startsWithQ: %s\n", startsWithQ.Get())
+			t.Logf("startsWithQ: %s\n", startsWithQ.Get())
 		}
 
 		startsWithQ = Of(words...).Parallel().Filter(func(t string) bool {
@@ -146,7 +128,7 @@ func TestExample_00(t *testing.T) {
 		}).FindAny()
 
 		if startsWithQ.IsPresent() {
-			fmt.Printf("startsWithQ: %s\n", startsWithQ.Get())
+			t.Logf("startsWithQ: %s\n", startsWithQ.Get())
 		}
 
 		aWordStartWithQ := Of(words...).Parallel().AnyMatch(func(t string) bool {
@@ -160,8 +142,6 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("Reduce", func(t *testing.T) {
-		defer trace("TestExample_00/Reduce")()
-
 		result1 := Sum(Map(Of(words...).Parallel(),
 			func(s string) int { return len(s) },
 		))
@@ -182,19 +162,15 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("Joining", func(t *testing.T) {
-		defer trace("TestExample_00/Joining")()
-
 		result := CollectByCollector(
 			Of(words...).Limit(10),
 			JoiningCollector(" "),
 		)
 
-		fmt.Printf("result := %s\n", result)
+		t.Logf("result := %s\n", result)
 	})
 
 	t.Run("ToMapCollector", func(t *testing.T) {
-		defer trace("TestExample_00/ToMapCollector")()
-
 		result := CollectByCollector(
 			Of(words...),
 			ToMapCollector(
@@ -206,7 +182,7 @@ func TestExample_00(t *testing.T) {
 
 		count := 0
 		for k, v := range result {
-			fmt.Printf("%q : %d\n", k, v)
+			t.Logf("%q : %d\n", k, v)
 			count++
 			if count > 10 {
 				return
@@ -215,8 +191,6 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("js8ri ch02_ex13", func(t *testing.T) {
-		defer trace("TestExample_00/js8ri_ch02_ex13")()
-
 		shortWords := Of(words...).Filter(func(t string) bool {
 			return len(t) < 12
 		})
@@ -230,12 +204,10 @@ func TestExample_00(t *testing.T) {
 				CountingCollector[string](),
 			),
 		)
-		fmt.Printf("result : %v\n", result)
+		t.Logf("result : %v\n", result)
 	})
 
 	t.Run("Effective Java, 3rd p.212", func(t *testing.T) {
-		defer trace("TestExample_00/effective_java")()
-
 		freq := CollectByCollector(
 			Of(words...),
 			GroupingByCollector(
@@ -251,76 +223,65 @@ func TestExample_00(t *testing.T) {
 				return freq[k1] > freq[k2]
 			}).Limit(10).ToSlice()
 
-		fmt.Printf("result : %v\n", result)
+		t.Logf("result : %v\n", result)
 	})
 }
 
 func TestExample_01(t *testing.T) {
-	defer trace("TestExample_01")()
-
+	tt := t
 	// generate same value repeatedly
 	Generate(func() string {
 		return "Echo"
 	}).Limit(10).ForEach(func(t string) {
-		fmt.Printf("%s ", t)
+		tt.Logf("%s ", t)
 	})
-	fmt.Println()
 }
 
 func TestExample_02(t *testing.T) {
-	defer trace("TestExample_02")()
-
+	tt := t
 	// generate random stream
 	Generate(rand.Int).Limit(10).ForEach(func(t int) {
-		fmt.Printf("%d ", t)
+		tt.Logf("%d ", t)
 	})
-	fmt.Println()
 
 	Generate(rand.Float64).Limit(10).ForEach(func(t float64) {
-		fmt.Printf("%e ", t)
+		tt.Logf("%e ", t)
 	})
-	fmt.Println()
 }
 
 func TestExample_03(t *testing.T) {
-	defer trace("TestExample_03:Iterate")()
-
+	tt := t
 	// generate 0, 1, 2, 3, 4, 5, ...
 	Iterate(0, func(t int) int {
 		return t + 1
 	}).Limit(10).ForEach(func(t int) {
-		fmt.Printf("%d ", t)
+		tt.Logf("%d ", t)
 	})
-	fmt.Println()
 }
 
 func TestExample_04(t *testing.T) {
-	defer trace("TestExample_04:FileLines")()
-
+	tt := t
 	s, err := FileLines("testdata/alice.txt")
 	if err != nil {
-		t.Fatalf("LinesOfFile failed: %v", err)
+		tt.Fatalf("LinesOfFile failed: %v", err)
 	}
 	s.Limit(10).ForEach(func(t string) {
-		fmt.Println(t)
+		tt.Logf("%v\n", t)
 	})
 }
 
 func TestExample_05(t *testing.T) {
-	defer trace("TestExample_05:Peek")()
-
+	tt := t
 	Iterate(1.0, func(t float64) float64 {
 		return t * 2
 	}).Peek(func(t float64) {
-		fmt.Printf("Fetching %e\n", t)
+		tt.Logf("Fetching %e\n", t)
 	}).Limit(10).ForEach(func(t float64) {
 		time.Sleep(time.Second / 2)
 	})
 }
 
 func TestExample_06(t *testing.T) {
-	defer trace("TestExample_06:Distinct")()
-
 	result := Distinct(Of("merrily", "merrily", "merrily", "gently")).ToSlice()
 
 	want := "[merrily gently]"
@@ -331,8 +292,6 @@ func TestExample_06(t *testing.T) {
 }
 
 func TestExample_07(t *testing.T) {
-	defer trace("TestExample_07:OptionalFlatMap")()
-
 	inverse := func(x float64) *Optional[float64] {
 		if x == 0.0 {
 			return OptionalEmpty[float64]()
@@ -350,20 +309,16 @@ func TestExample_07(t *testing.T) {
 	a := OptionalFlatMap(OptionalOf(4.0), inverse)
 	result := OptionalFlatMap(a, squareRoot)
 
-	fmt.Printf("result : %v\n", result)
+	t.Logf("result : %v", result)
 }
 
 func TestExample_RandomNumbers(t *testing.T) {
-	defer trace("TestExample_RandomNumbers")()
-
 	random := func(a, c, m, seed int64) Stream[int64] {
 		return Iterate(seed, func(x int64) int64 {
 			return (a*x + c) % m
 		})
 	}
 	t.Run("Simple Generation", func(t *testing.T) {
-		defer trace("TestExample_RandomNumbers/Simple Generation")()
-
 		const noOfRandoms = 100
 
 		randomStream := random(25214903917, 11, 1<<48, 0)
@@ -375,8 +330,6 @@ func TestExample_RandomNumbers(t *testing.T) {
 	})
 
 	t.Run("Negative Values", func(t *testing.T) {
-		defer trace("TestExample_RandomNumbers/Negative Values")()
-
 		const noOfRandoms = 100
 
 		randomStream := random(25214903917, 11, 1<<48, 0)
@@ -391,8 +344,6 @@ func TestExample_RandomNumbers(t *testing.T) {
 	})
 
 	t.Run("Million Values", func(t *testing.T) {
-		defer trace("TestExample_RandomNumbers/Milion Values")()
-
 		const noOfRandoms = 1_000_000
 
 		randomStream := random(25214903917, 11, math.MinInt64, 0).
@@ -420,13 +371,11 @@ func TestExample_RandomNumbers(t *testing.T) {
 			),
 		)
 
-		fmt.Println(result)
+		t.Logf("%v", result)
 	})
 }
 
 func TestEample_Pi(t *testing.T) {
-	defer trace("TestExample_Pi")()
-
 	result := CollectByCollector(
 		RangeClosed[float64](0, 1_000_000).Parallel(),
 		SummingCollector(
@@ -434,17 +383,16 @@ func TestEample_Pi(t *testing.T) {
 				return 4 * math.Pow(-1, k) / (2*k + 1)
 			}),
 	)
-	fmt.Println(result)
+	t.Logf("%v", result)
 
 }
 
 /*
  * Cannot compile, because "golang.org/x/text/language/display" contains
  * multiple packages.
+ */
 
 func TestExample_08(t *testing.T) {
-	defer trace("TestExample_08:ToMapCollector")()
-
 	locales := display.Supported.Tags()
 	en := display.English.Tags()
 
@@ -463,6 +411,5 @@ func TestExample_08(t *testing.T) {
 		),
 	)
 
-	fmt.Println(result)
+	t.Logf("%v", result)
 }
-*/

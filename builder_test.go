@@ -3,8 +3,6 @@ package gostream
 import "testing"
 
 func TestBuilder(t *testing.T) {
-	defer trace("TestBuilder")()
-
 	var builder Builder[int]
 
 	for i := 0; i < 100; i++ {

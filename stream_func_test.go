@@ -13,16 +13,7 @@ import (
 	"github.com/YoshikiShibata/gostream/slices"
 )
 
-func trace(name string) func() {
-	fmt.Printf("=== RUN %s\n", name)
-	return func() {
-		fmt.Printf("=== END %s\n", name)
-	}
-}
-
 func TestStream_MapFunc(t *testing.T) {
-	defer trace("TestStream_MapFunc")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -54,8 +45,6 @@ func TestStream_MapFunc(t *testing.T) {
 }
 
 func TestStream_DistinctFunc(t *testing.T) {
-	defer trace("TestStream_DistinctFunc")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -87,8 +76,6 @@ func TestStream_DistinctFunc(t *testing.T) {
 }
 
 func TestStream_SortedFunc(t *testing.T) {
-	defer trace("TestStream_SortedFunc")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -119,11 +106,7 @@ func TestStream_SortedFunc(t *testing.T) {
 }
 
 func TestStream_ReduceFunc(t *testing.T) {
-	defer trace("TestStream_ReduceFunc")()
-
 	t.Run("int", func(t *testing.T) {
-		defer trace("TestStream_ReduceFunc/int")()
-
 		for _, tc := range [...]struct {
 			dataSize int
 		}{
@@ -158,8 +141,6 @@ func TestStream_ReduceFunc(t *testing.T) {
 	})
 
 	t.Run("string", func(t *testing.T) {
-		defer trace("TestStream_ReduceFunc/string")()
-
 		for _, tc := range [...]struct {
 			dataSize int
 		}{
@@ -201,8 +182,6 @@ func TestStream_ReduceFunc(t *testing.T) {
 }
 
 func TestStream_CollectFunc(t *testing.T) {
-	defer trace("TestStream_CollectFunc")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -254,8 +233,6 @@ func TestStream_CollectFunc(t *testing.T) {
 }
 
 func TestStream_EmptyFunc(t *testing.T) {
-	defer trace("TestStream_EmptyFunc")()
-
 	for _, parallel := range [...]bool{false, true} {
 		count := 0
 		s := Empty[int]()
@@ -274,8 +251,6 @@ func TestStream_EmptyFunc(t *testing.T) {
 }
 
 func TestStream_IterateFunc(t *testing.T) {
-	defer trace("TestStream_IterateFunc")()
-
 	lastValue := 0
 
 	Iterate[int](1, func(v int) int {
@@ -290,8 +265,6 @@ func TestStream_IterateFunc(t *testing.T) {
 }
 
 func TestStream_IterateNFunc(t *testing.T) {
-	defer trace("TestStream_IterateNFunc")()
-
 	lastValue := 0
 
 	IterateN[int](
@@ -311,11 +284,7 @@ func TestStream_IterateNFunc(t *testing.T) {
 }
 
 func TestStream_GenerateFunc(t *testing.T) {
-	defer trace("TestStream_GenerateFunc")()
-
 	t.Run("constant", func(t *testing.T) {
-		defer trace("TestStream_GenerateFunc/constant")()
-
 		Generate[int](func() int {
 			return 777
 		}).Limit(100).ForEach(func(v int) {
@@ -326,8 +295,6 @@ func TestStream_GenerateFunc(t *testing.T) {
 	})
 
 	t.Run("rand", func(t *testing.T) {
-		defer trace("TestStream_GenerateFunc/rand")()
-
 		var results []int
 
 		Generate(rand.Int).Limit(100).ForEach(func(v int) {
@@ -348,7 +315,6 @@ func TestStream_GenerateFunc(t *testing.T) {
 }
 
 func TestStream_ConcatFunc(t *testing.T) {
-	defer trace("TestStream_ConcatFunc")()
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -387,8 +353,6 @@ func TestStream_ConcatFunc(t *testing.T) {
 }
 
 func TestStream_FlatMapFunc(t *testing.T) {
-	defer trace("TestStream_FlatMapFunc")()
-
 	mapToRuneStream := func(s string) Stream[rune] {
 		runes := []rune(s)
 		return Of(runes...)
@@ -409,8 +373,6 @@ func TestStream_FlatMapFunc(t *testing.T) {
 }
 
 func TestStream_RangeFunc(t *testing.T) {
-	defer trace("TestStream_RangeFunc")()
-
 	rangeValues := Range(0, 100).ToSlice()
 
 	if len(rangeValues) != 100 {
@@ -424,8 +386,6 @@ func TestStream_RangeFunc(t *testing.T) {
 }
 
 func TestStream_RangeClosedFunc(t *testing.T) {
-	defer trace("TestStream_RangeClosedFunc")()
-
 	rangeValues := RangeClosed(0, 99).ToSlice()
 
 	if len(rangeValues) != 100 {
@@ -439,8 +399,6 @@ func TestStream_RangeClosedFunc(t *testing.T) {
 }
 
 func TestStream_MaxFunc(t *testing.T) {
-	defer trace("TestStream_MaxFunc")()
-
 	rand.Seed(time.Now().Unix())
 
 	for _, tc := range [...]struct {
@@ -488,8 +446,6 @@ func TestStream_MaxFunc(t *testing.T) {
 }
 
 func TestStream_MinFunc(t *testing.T) {
-	defer trace("TestStream_MinFunc")()
-
 	rand.Seed(time.Now().Unix())
 
 	for _, tc := range [...]struct {

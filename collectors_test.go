@@ -13,8 +13,6 @@ import (
 )
 
 func TestCollectors_ToSliceCollector(t *testing.T) {
-	defer trace("TestCollectors_ToSliceCollector")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -50,8 +48,6 @@ func TestCollectors_ToSliceCollector(t *testing.T) {
 }
 
 func TestCollectors_ToSetCollector(t *testing.T) {
-	defer trace("TestCollectors_ToSetCollector")()
-
 	for _, tc := range [...]struct {
 		dataSize int
 	}{
@@ -88,8 +84,6 @@ func TestCollectors_ToSetCollector(t *testing.T) {
 }
 
 func TestCollectors_JoiningCollector(t *testing.T) {
-	defer trace("TestCollectors_JoinigCollector")()
-
 	data := []string{"hello", "world", "こんにちは", "世界"}
 	result := CollectByCollector(Of(data...), JoiningCollector(" "))
 	want := strings.Join(data, " ")
@@ -99,8 +93,6 @@ func TestCollectors_JoiningCollector(t *testing.T) {
 }
 
 func TestCollectors_MappingCollector(t *testing.T) {
-	defer trace("TestCollectors_MappingCollector")()
-
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	result := CollectByCollector(Of(data...),
 		MappingCollector(
@@ -118,8 +110,6 @@ func TestCollectors_MappingCollector(t *testing.T) {
 }
 
 func TestCollectors_FlatMappingCollector(t *testing.T) {
-	defer trace("TestCollectors_FlatMappingCollector")()
-
 	data := []int{0, 10, 20}
 	result := CollectByCollector(
 		Of(data...),
@@ -146,8 +136,6 @@ func TestCollectors_FlatMappingCollector(t *testing.T) {
 }
 
 func TestCollectors_FilteringCollector(t *testing.T) {
-	defer trace("TestCollectors_FilteringCollector")()
-
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 	result := CollectByCollector(
@@ -165,8 +153,6 @@ func TestCollectors_FilteringCollector(t *testing.T) {
 }
 
 func TestCollectors_GroupingByToSliceCollector(t *testing.T) {
-	defer trace("TestCollectors_GroupingByToSliceCollector")()
-
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	result := CollectByCollector(
 		Of(data...),
@@ -187,13 +173,9 @@ func TestCollectors_GroupingByToSliceCollector(t *testing.T) {
 }
 
 func TestCollectors_GroupingByCollector(t *testing.T) {
-	defer trace("TestCollectors_GroupingByCollector")()
-
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 	t.Run("Set", func(t *testing.T) {
-		defer trace("TestCollectors_GroupingByCollector/Set")()
-
 		result := CollectByCollector(
 			Of(data...),
 			GroupingByCollector(
@@ -214,8 +196,6 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 	})
 
 	t.Run("Slice", func(t *testing.T) {
-		defer trace("TestCollectors_GroupingByCollector/Slice")()
-
 		result := CollectByCollector(
 			Of(data...),
 			GroupingByCollector(
@@ -235,8 +215,6 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 	})
 
 	t.Run("Counting", func(t *testing.T) {
-		defer trace("TestCollectors_GroupingByCollector/Counting")()
-
 		result := CollectByCollector(
 			Of(data...),
 			GroupingByCollector(
@@ -256,8 +234,6 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 	})
 
 	t.Run("MaxBy", func(t *testing.T) {
-		defer trace("TestCollectors_GroupingByCollector/MaxBy")()
-
 		result := CollectByCollector(
 			Of(data...),
 			GroupingByCollector(
@@ -279,8 +255,6 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 	})
 
 	t.Run("MinBy", func(t *testing.T) {
-		defer trace("TestCollectors_GroupingByCollector/MaxBy")()
-
 		result := CollectByCollector(
 			Of(data...),
 			GroupingByCollector(
@@ -303,13 +277,9 @@ func TestCollectors_GroupingByCollector(t *testing.T) {
 }
 
 func TestCollectors_PartitioningByToSliceCollector(t *testing.T) {
-	defer trace("TestCollectors_PartitioningByToSliceCollector")()
-
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 	t.Run("Slice", func(t *testing.T) {
-		defer trace("TestCollectors_GroupingByCollector/Slice")()
-
 		result := CollectByCollector(
 			Of(data...),
 			PartitioningByToSliceCollector(
@@ -324,13 +294,9 @@ func TestCollectors_PartitioningByToSliceCollector(t *testing.T) {
 	})
 }
 func TestCollectors_PartitioningByCollector(t *testing.T) {
-	defer trace("TestCollectors_PartitioningByCollector")()
-
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 	t.Run("Slice", func(t *testing.T) {
-		defer trace("TestCollectors_GroupingByCollector/Slice")()
-
 		result := CollectByCollector(
 			Of(data...),
 			PartitioningByCollector(
@@ -346,8 +312,6 @@ func TestCollectors_PartitioningByCollector(t *testing.T) {
 }
 
 func TestCollectors_ToMapCollector(t *testing.T) {
-	defer trace("TestCollectors_ToMapByCollector")()
-
 	data := []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
 	result := CollectByCollector(
@@ -374,8 +338,6 @@ func TestCollectors_ToMapCollector(t *testing.T) {
 }
 
 func TestCollectors_SummarizingCollector(t *testing.T) {
-	defer trace("TestCollectors_SummarizingCollector")()
-
 	count := 1000
 	s := Iterate(1, func(t int) int {
 		return t + 1
@@ -405,14 +367,11 @@ func TestCollectors_SummarizingCollector(t *testing.T) {
 	if result.GetAverage() != wantAverage {
 		t.Errorf("result.GetAverage() is %e, want %e", result.GetAverage(), wantAverage)
 	}
-	fmt.Printf("result : %v\n", result)
+	t.Logf("result : %v\n", result)
 }
 
 func TestCollectors_SummingCollector(t *testing.T) {
-	defer trace("TestCollectors_SummingCollector")()
-
 	t.Run("empty", func(t *testing.T) {
-		defer trace("TestCollectors_SummingCollector/empty")()
 		s := Empty[string]()
 		sum := CollectByCollector(s,
 			SummingCollector(func(t string) int {
@@ -426,8 +385,6 @@ func TestCollectors_SummingCollector(t *testing.T) {
 	})
 
 	t.Run("file lines", func(t *testing.T) {
-		defer trace("TestCollectors_SummingCollector/file lines")()
-
 		s, err := FileLines("testdata/alice.txt")
 		if err != nil {
 			t.Fatalf("FileLines failed: %v", err)
@@ -451,8 +408,6 @@ func TestCollectors_SummingCollector(t *testing.T) {
 }
 
 func TestCollectors_AveragingInt64Collector(t *testing.T) {
-	defer trace("TestCollectors_AveragingInt64Collector")()
-
 	start := -777
 	end := 9999
 	average := CollectByCollector(
@@ -474,8 +429,6 @@ func TestCollectors_AveragingInt64Collector(t *testing.T) {
 }
 
 func TestCollectors_AveragingFloat64Collector(t *testing.T) {
-	defer trace("TestCollectors_AveragingFloat64Collector")()
-
 	start := -777
 	end := 9999
 	average := CollectByCollector(
