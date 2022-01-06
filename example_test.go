@@ -6,9 +6,12 @@ import (
 	"bufio"
 	"fmt"
 	"math"
+	"math/big"
 	"math/rand"
 	"os"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -405,4 +408,49 @@ func TestExample_08(t *testing.T) {
 	)
 
 	t.Logf("%v", result)
+}
+
+// π(1e6) is the number of primes less than or equal to 1e6
+func TestExample_π(t *testing.T) {
+	noOfPrimeNumbers := Map(RangeClosed[int64](2, 1e6).Parallel(), func(i int64) *big.Int {
+		return big.NewInt(i)
+	}).Filter(func(i *big.Int) bool {
+		return i.ProbablyPrime(1)
+	}).Count()
+	t.Logf("noOfPrimeNumbers is %d\n", noOfPrimeNumbers)
+}
+
+// This code is same logic above without using Stream.
+func TestExample_π_nostream(t *testing.T) {
+	var (
+		wg        sync.WaitGroup
+		sem       = make(chan struct{}, runtime.GOMAXPROCS(-1))
+		result    = make(chan bool)
+		countChan = make(chan int)
+	)
+
+	go func() {
+		count := 0
+		for b := range result {
+			if b {
+				count++
+			}
+		}
+		countChan <- count
+	}()
+
+	for i := int64(2); i <= 1e6; i++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int64) {
+			result <- big.NewInt(i).ProbablyPrime(1)
+			<-sem
+			defer wg.Done()
+		}(i)
+	}
+
+	wg.Wait()
+	close(result)
+	t.Logf("noOfPrimeNumbers is %d\n", <-countChan)
+	close(countChan)
 }
