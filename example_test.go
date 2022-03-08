@@ -376,9 +376,9 @@ func TestExample_RandomNumbers(t *testing.T) {
 	})
 }
 
-func TestEample_Pi(t *testing.T) {
+func TestExample_Pi(t *testing.T) {
 	result := CollectByCollector(
-		RangeClosed[float64](0, 10_000_000).Parallel(),
+		RangeClosed[float64](0, 100_000).Parallel(),
 		SummingCollector(
 			func(k float64) float64 {
 				return 4 * math.Pow(-1, k) / (2*k + 1)

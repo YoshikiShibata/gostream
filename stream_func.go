@@ -3,9 +3,10 @@
 package gostream
 
 import (
-	"constraints"
 	"sort"
 	"sync"
+
+	"golang.org/x/exp/constraints"
 )
 
 // Map returns a stream consisting of the results of applying the given

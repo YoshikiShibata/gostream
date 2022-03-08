@@ -5,7 +5,7 @@
 // Package alg provides basic algorithms.
 package alg
 
-import "constraints"
+import "golang.org/x/exp/constraints"
 
 // Max returns the maximum of two values of some ordered type.
 func Max[T constraints.Ordered](a, b T) T {

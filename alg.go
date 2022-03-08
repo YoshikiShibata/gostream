@@ -3,7 +3,7 @@
 package gostream
 
 import (
-	"constraints"
+	"golang.org/x/exp/constraints"
 )
 
 // sum returns the sum of two values of some integer type.
