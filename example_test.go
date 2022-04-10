@@ -410,14 +410,46 @@ func TestExample_08(t *testing.T) {
 	t.Logf("%v", result)
 }
 
-// π(1e6) is the number of primes less than or equal to 1e6
 func TestExample_π(t *testing.T) {
+	noOfPrimeNumbers := π_parallel()
+	t.Logf("noOfPrimeNumbers is %d\n", noOfPrimeNumbers)
+}
+
+// π(1e6) is the number of primes less than or equal to 1e6
+func π_parallel() int {
 	noOfPrimeNumbers := Map(RangeClosed[int64](2, 1e6).Parallel(), func(i int64) *big.Int {
 		return big.NewInt(i)
 	}).Filter(func(i *big.Int) bool {
 		return i.ProbablyPrime(1)
 	}).Count()
-	t.Logf("noOfPrimeNumbers is %d\n", noOfPrimeNumbers)
+	return noOfPrimeNumbers
+}
+
+func π() int {
+	noOfPrimeNumbers := Map(RangeClosed[int64](2, 1e6), func(i int64) *big.Int {
+		return big.NewInt(i)
+	}).Filter(func(i *big.Int) bool {
+		return i.ProbablyPrime(1)
+	}).Count()
+	return noOfPrimeNumbers
+}
+
+var noUseResult int
+
+func Benchmark_π(b *testing.B) {
+	var result int
+	for i := 0; i < b.N; i++ {
+		result += π()
+	}
+	noUseResult = result
+}
+
+func Benchmark_π_parallel(b *testing.B) {
+	var result int
+	for i := 0; i < b.N; i++ {
+		result += π_parallel()
+	}
+	noUseResult = result
 }
 
 // This code is same logic above without using Stream.

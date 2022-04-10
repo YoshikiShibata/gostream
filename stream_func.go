@@ -366,8 +366,8 @@ func Empty[T any]() Stream[T] {
 func Iterate[T any](seed T, f UnaryOperator[T]) Stream[T] {
 	gs := &genericStream[T]{
 		parallelCount: 1,
-		nextReq:       make(chan struct{}),
-		nextData:      make(chan orderedData[T]),
+		nextReq:       make(chan struct{}, goMaxProcs),
+		nextData:      make(chan orderedData[T], goMaxProcs),
 	}
 
 	go func() {
