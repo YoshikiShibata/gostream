@@ -410,27 +410,24 @@ func TestExample_08(t *testing.T) {
 	t.Logf("%v", result)
 }
 
-func TestExample_π(t *testing.T) {
-	noOfPrimeNumbers := π_parallel()
-	t.Logf("noOfPrimeNumbers is %d\n", noOfPrimeNumbers)
-}
-
 // π(1e6) is the number of primes less than or equal to 1e6
-func π_parallel() int {
+func π_parallel(b *testing.B) int {
 	noOfPrimeNumbers := Map(RangeClosed[int64](2, 1e6).Parallel(), func(i int64) *big.Int {
 		return big.NewInt(i)
 	}).Filter(func(i *big.Int) bool {
 		return i.ProbablyPrime(1)
 	}).Count()
+	b.Logf("π_parallel: noOfPrimeNumbers = %d\n", noOfPrimeNumbers)
 	return noOfPrimeNumbers
 }
 
-func π() int {
+func π(b *testing.B) int {
 	noOfPrimeNumbers := Map(RangeClosed[int64](2, 1e6), func(i int64) *big.Int {
 		return big.NewInt(i)
 	}).Filter(func(i *big.Int) bool {
 		return i.ProbablyPrime(1)
 	}).Count()
+	b.Logf("π: noOfPrimeNumbers = %d\n", noOfPrimeNumbers)
 	return noOfPrimeNumbers
 }
 
@@ -439,7 +436,7 @@ var noUseResult int
 func Benchmark_π(b *testing.B) {
 	var result int
 	for i := 0; i < b.N; i++ {
-		result += π()
+		result += π(b)
 	}
 	noUseResult = result
 }
@@ -447,13 +444,21 @@ func Benchmark_π(b *testing.B) {
 func Benchmark_π_parallel(b *testing.B) {
 	var result int
 	for i := 0; i < b.N; i++ {
-		result += π_parallel()
+		result += π_parallel(b)
+	}
+	noUseResult = result
+}
+
+func Benchmark_π_nostream(b *testing.B) {
+	var result int
+	for i := 0; i < b.N; i++ {
+		result += π_nostream(b)
 	}
 	noUseResult = result
 }
 
 // This code is same logic above without using Stream.
-func TestExample_π_nostream(t *testing.T) {
+func π_nostream(b *testing.B) int {
 	var (
 		wg        sync.WaitGroup
 		sem       = make(chan struct{}, runtime.GOMAXPROCS(-1))
@@ -483,6 +488,8 @@ func TestExample_π_nostream(t *testing.T) {
 
 	wg.Wait()
 	close(result)
-	t.Logf("noOfPrimeNumbers is %d\n", <-countChan)
-	close(countChan)
+	defer close(countChan)
+	noOfPrimeNumbers := <-countChan
+	b.Logf("π_nostream: noOfPrimeNumbers = %d\n", noOfPrimeNumbers)
+	return noOfPrimeNumbers
 }
