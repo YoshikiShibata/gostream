@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	"github.com/YoshikiShibata/gostream/function"
 )
 
 // ToSliceCollector returns a Collector that accumulates the input elements
@@ -78,7 +80,7 @@ func JoiningCollector(
 // to one accepting elements of type T by appling a mapping function
 // to each input element before accumulation.
 func MappingCollector[T, U, A, R any](
-	mapper Function[T, U],
+	mapper function.Function[T, U],
 	downstream *Collector[U, A, R]) *Collector[T, A, R] {
 	downstreamAccumulator := downstream.Accumulator()
 
@@ -98,7 +100,7 @@ func MappingCollector[T, U, A, R any](
 // elements to a Stream covering zero or more output elements that are then
 // accumulated downstream.
 func FlatMappingCollector[T, U, A, R any](
-	mapper Function[T, Stream[U]],
+	mapper function.Function[T, Stream[U]],
 	downstream *Collector[U, A, R]) *Collector[T, A, R] {
 	downstreamAccumulator := downstream.Accumulator()
 
@@ -118,7 +120,7 @@ func FlatMappingCollector[T, U, A, R any](
 // type T by applying the predicate to each input element and only accumulating
 // if the predicate returns true
 func FilteringCollector[T, A, R any](
-	predicate Predicate[T],
+	predicate function.Predicate[T],
 	downstream *Collector[T, A, R],
 ) *Collector[T, A, R] {
 	downstreamAccumulator := downstream.Accumulator()
@@ -144,7 +146,7 @@ func FilteringCollector[T, A, R any](
 // applying the classification function to the input elements which map to
 // the associated key under the classification function.
 func GroupingByToSliceCollector[T any, K comparable](
-	classifer Function[T, K],
+	classifer function.Function[T, K],
 ) *Collector[T, map[K]*[]T, map[K][]T] {
 	return GroupingByCollector(classifer, ToSliceCollector[T]())
 }
@@ -154,7 +156,7 @@ func GroupingByToSliceCollector[T any, K comparable](
 // classifier function, and then performing a reduction operation on the values
 // associated with a give key using the specified downstream Collector.
 func GroupingByCollector[T any, K comparable, A, D any](
-	classifier Function[T, K],
+	classifier function.Function[T, K],
 	downstream *Collector[T, A, D],
 ) *Collector[T, map[K]A, map[K]D] {
 
@@ -198,7 +200,7 @@ func GroupingByCollector[T any, K comparable, A, D any](
 // input elements according to a Predicated, and organizes them into
 // a map[bool][]T.
 func PartitioningByToSliceCollector[T any](
-	predicate Predicate[T],
+	predicate function.Predicate[T],
 ) *Collector[T, *[2]*[]T, map[bool][]T] {
 	return PartitioningByCollector(predicate, ToSliceCollector[T]())
 }
@@ -208,7 +210,7 @@ func PartitioningByToSliceCollector[T any](
 // according to antoher Collector, and organizes them into map[bool]D whose
 // values are the result of the downstream reducation.
 func PartitioningByCollector[T, D, A any](
-	predicate Predicate[T],
+	predicate function.Predicate[T],
 	downstream *Collector[T, A, D],
 ) *Collector[T, *[2]A, map[bool]D] {
 	downstreamAccumulator := downstream.Accumulator()
@@ -249,8 +251,8 @@ func PartitioningByCollector[T, D, A any](
 //
 // If the mapped keys contains duplicates, this function panics.
 func ToUniqueKeysMapCollector[T any, K comparable, U any](
-	keyMapper Function[T, K],
-	valueMapper Function[T, U],
+	keyMapper function.Function[T, K],
+	valueMapper function.Function[T, U],
 ) *Collector[T, map[K]U, map[K]U] {
 	return &Collector[T, map[K]U, map[K]U]{
 		supplier: func() map[K]U {
@@ -289,9 +291,9 @@ func ToUniqueKeysMapCollector[T any, K comparable, U any](
 // to each equal element, and the results are merged using the provided
 // merging function.
 func ToMapCollector[T any, K comparable, U any](
-	keyMapper Function[T, K],
-	valueMapper Function[T, U],
-	mergeFunction BinaryOperator[U],
+	keyMapper function.Function[T, K],
+	valueMapper function.Function[T, U],
+	mergeFunction function.BinaryOperator[U],
 ) *Collector[T, map[K]U, map[K]U] {
 	return &Collector[T, map[K]U, map[K]U]{
 		supplier: func() map[K]U {
@@ -331,7 +333,7 @@ func ToMapCollector[T any, K comparable, U any](
 // number-producing mapping function to each input element, and returns summary
 // statistics for the resulting values.
 func SummarizingCollector[T any, R Number](
-	mapper Function[T, R],
+	mapper function.Function[T, R],
 ) *Collector[T, *SummaryStatistics[R], *SummaryStatistics[R]] {
 	return &Collector[T, *SummaryStatistics[R], *SummaryStatistics[R]]{
 		supplier: NewSummaryStatistics[R],
@@ -354,7 +356,7 @@ func SummarizingCollector[T any, R Number](
 // number-valued function applied to the input elements. If no elements are
 // present, the result is 0.
 func SummingCollector[T any, R Number](
-	mapper Function[T, R],
+	mapper function.Function[T, R],
 ) *Collector[T, *R, R] {
 	return &Collector[T, *R, R]{
 		supplier: func() *R {
@@ -387,7 +389,7 @@ func CountingCollector[T any]() *Collector[T, *int64, int64] {
 // identity.
 func ReducingCollector[T any](
 	identity T,
-	op BinaryOperator[T],
+	op function.BinaryOperator[T],
 ) *Collector[T, *T, T] {
 	return &Collector[T, *T, T]{
 		supplier: func() *T {
@@ -408,7 +410,7 @@ func ReducingCollector[T any](
 }
 
 func ReducingToOptionalCollector[T any](
-	op BinaryOperator[T],
+	op function.BinaryOperator[T],
 ) *Collector[T, *Optional[T], *Optional[T]] {
 	accept := func(o *Optional[T], t T) {
 		if o.present {
@@ -472,7 +474,7 @@ func MinByCollector[T any](
 // an int64-valued function applied to the input elements. If no elements are
 // present, the result is 0.
 func AveragingInt64Collector[T any](
-	mapper Function[T, int64],
+	mapper function.Function[T, int64],
 ) *Collector[T, *[2]int64, float64] {
 	return &Collector[T, *[2]int64, float64]{
 		supplier: func() *[2]int64 {
@@ -497,7 +499,7 @@ func AveragingInt64Collector[T any](
 }
 
 func AveragingFloat64Collector[T any](
-	mapper Function[T, float64],
+	mapper function.Function[T, float64],
 ) *Collector[T, *[4]float64, float64] {
 	// sumWithCompensation incorporates a new float64 value using Kahan
 	// summation/compensation summation.

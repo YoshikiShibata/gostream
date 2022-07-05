@@ -2,7 +2,11 @@
 
 package gostream
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/YoshikiShibata/gostream/function"
+)
 
 // Optional is a container object which may or may not contain a value.
 // If a value is present, IsPresent() returns true, if no value is present,
@@ -33,7 +37,7 @@ func (o *Optional[T]) IsEmpty() bool {
 
 // IfPresent performs the give action with a value if the value is present,
 // otherwise does nothing.
-func (o *Optional[T]) IfPresent(action Consumer[T]) {
+func (o *Optional[T]) IfPresent(action function.Consumer[T]) {
 	if o.present {
 		action(o.value)
 	}
@@ -42,7 +46,7 @@ func (o *Optional[T]) IfPresent(action Consumer[T]) {
 // IfPresentOrElese performs the give action with a value if the value is
 // present, otherwise performs the given empyAction.
 func (o *Optional[T]) IfPresentOrElse(
-	action Consumer[T],
+	action function.Consumer[T],
 	emptyAction func(),
 ) {
 	if o.present {
@@ -54,7 +58,7 @@ func (o *Optional[T]) IfPresentOrElse(
 
 // Filter returns an Optional describing a value if the value is present and
 // the value matches the give predicate, otherwise returns an empty Optional.
-func (o *Optional[T]) Filter(predicate Predicate[T]) *Optional[T] {
+func (o *Optional[T]) Filter(predicate function.Predicate[T]) *Optional[T] {
 	if o.present {
 		return o // o is empty
 	}
@@ -66,7 +70,7 @@ func (o *Optional[T]) Filter(predicate Predicate[T]) *Optional[T] {
 
 // Or returns an Optional describing a value if the value is present,
 // otherwise returns an Optional produced by the supplying function.
-func (o *Optional[T]) Or(supplier Supplier[*Optional[T]]) *Optional[T] {
+func (o *Optional[T]) Or(supplier function.Supplier[*Optional[T]]) *Optional[T] {
 	if o.present {
 		return o
 	}
@@ -96,7 +100,7 @@ func (o *Optional[T]) OrElse(other T) T {
 
 // OrElseGet returns a value if the value is present, othwrwise returns
 // the result produced by the supplying function.
-func (o *Optional[T]) OrElseGet(supplier Supplier[T]) T {
+func (o *Optional[T]) OrElseGet(supplier function.Supplier[T]) T {
 	if o.present {
 		return o.value
 	}

@@ -2,40 +2,10 @@
 
 package gostream
 
-// Consumer represents an operation that accepts a single input argument and
-// returns no result.
-type Consumer[T any] func(t T)
-
-// Predicate represents a predicate (bool-valued function) of one argument.
-type Predicate[T any] func(t T) bool
-
-// Function represents a function that accepts one argument and produces a
-// result
-type Function[T, R any] func(t T) R
-
 // Less is a comparison function.
 type Less[T any] func(t1, t2 T) bool
 
-// BiFunction represents a function that accepts two arguments and produces
-// a result.
-type BiFunction[T, U, R any] func(t T, u U) R
-
-// BinaryOperator represents an operation upon two operands of the same type,
-// producing a result of the same type as the operands.
-type BinaryOperator[T any] BiFunction[T, T, T]
-
-// Supplier represents a supplier of results
-type Supplier[T any] func() T
-
-// BiConsumer represents an operation that accepts two input arguments and
-// returns no result.
-type BiConsumer[T, U any] func(t T, u U)
-
-// UnaryOperator represents an operation on a single operand that produces a
-// result of the same type as its operand
-type UnaryOperator[T any] Function[T, T]
-
-// Identity is a function that alwasy returns its input argument
+// Identity is a function that always returns its input argument
 func Identity[T any](t T) T {
 	return t
 }

@@ -2,6 +2,8 @@
 
 package gostream
 
+import "github.com/YoshikiShibata/gostream/function"
+
 // OptionalOf returns an Optional describing the give value.
 func OptionalOf[T any](value T) *Optional[T] {
 	return &Optional[T]{
@@ -20,7 +22,7 @@ func OptionalEmpty[T any]() *Optional[T] {
 // if the value is present, otherwise returns an empty Optional
 func OptionalMap[U, T any](
 	o *Optional[T],
-	mapper Function[T, U],
+	mapper function.Function[T, U],
 ) *Optional[U] {
 	if o.IsPresent() {
 		return &Optional[U]{} // empty
@@ -35,7 +37,7 @@ func OptionalMap[U, T any](
 // mapping function to a value, otherwise returns an empty Optional
 func OptionalFlatMap[U, T any](
 	o *Optional[T],
-	mapper Function[T, *Optional[U]],
+	mapper function.Function[T, *Optional[U]],
 ) *Optional[U] {
 	if !o.IsPresent() {
 		return &Optional[U]{} // empty
