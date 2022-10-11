@@ -8,6 +8,8 @@ import (
 	"sort"
 	"sync"
 	"sync/atomic"
+
+	"github.com/YoshikiShibata/gostream/function"
 )
 
 type orderedData[T any] struct {
@@ -119,7 +121,7 @@ func (gs *genericStream[T]) getPrevData() (orderedData[T], bool) {
 	return data, ok
 }
 
-func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
+func (gs *genericStream[T]) terminalOp(op function.Consumer[T]) {
 	gs.nextReq <- struct{}{}
 	for od := range gs.nextData {
 		op(od.data)
@@ -129,7 +131,7 @@ func (gs *genericStream[T]) terminalOp(op Consumer[T]) {
 }
 
 func (gs *genericStream[T]) terminalOpOrderedData(
-	op Consumer[orderedData[T]]) {
+	op function.Consumer[orderedData[T]]) {
 	gs.nextReq <- struct{}{}
 	for od := range gs.nextData {
 		op(od)
@@ -185,7 +187,7 @@ func (gs *genericStream[T]) drain() {
 	gs.close()
 }
 
-func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
+func (gs *genericStream[T]) Filter(predicate function.Predicate[T]) Stream[T] {
 	gs.validateState()
 
 	newGS := newGenericStream(gs)
@@ -197,7 +199,7 @@ func (gs *genericStream[T]) Filter(predicate Predicate[T]) Stream[T] {
 	return newGS
 }
 
-func (gs *genericStream[T]) filter(predicate Predicate[T]) {
+func (gs *genericStream[T]) filter(predicate function.Predicate[T]) {
 	for gs.getNextReq() {
 		od, ok := gs.getPrevData()
 		if !ok {
@@ -224,7 +226,7 @@ func (gs *genericStream[T]) Close() {
 	panic("Not Implemented Yet")
 }
 
-func (gs *genericStream[T]) ForEach(action Consumer[T]) {
+func (gs *genericStream[T]) ForEach(action function.Consumer[T]) {
 	gs.validateState()
 
 	if !gs.parallel {
@@ -283,7 +285,7 @@ func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 	return Of(dataSlice...)
 }
 
-func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
+func (gs *genericStream[T]) Peek(action function.Consumer[T]) Stream[T] {
 	gs.validateState()
 
 	newGS := newGenericStream(gs)
@@ -296,7 +298,7 @@ func (gs *genericStream[T]) Peek(action Consumer[T]) Stream[T] {
 	return newGS
 }
 
-func (gs *genericStream[T]) peek(action Consumer[T]) {
+func (gs *genericStream[T]) peek(action function.Consumer[T]) {
 	for gs.getNextReq() {
 		od, ok := gs.getPrevData()
 		if !ok {
@@ -434,7 +436,7 @@ func (gs *genericStream[T]) ToSlice() []T {
 
 func (gs *genericStream[T]) Reduce(
 	identity T,
-	accumulator BinaryOperator[T],
+	accumulator function.BinaryOperator[T],
 ) T {
 	gs.validateState()
 
@@ -459,7 +461,7 @@ func (gs *genericStream[T]) Reduce(
 }
 
 func (gs *genericStream[T]) ReduceToOptional(
-	accumulator BinaryOperator[T],
+	accumulator function.BinaryOperator[T],
 ) *Optional[T] {
 	gs.validateState()
 
@@ -637,7 +639,7 @@ func (gs *genericStream[T]) Count() int {
 	return count
 }
 
-func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
+func (gs *genericStream[T]) AnyMatch(predicate function.Predicate[T]) bool {
 	gs.validateState()
 
 	var matched int64
@@ -668,7 +670,7 @@ func (gs *genericStream[T]) AnyMatch(predicate Predicate[T]) bool {
 	return atomic.LoadInt64(&matched) == 1
 }
 
-func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
+func (gs *genericStream[T]) AllMatch(predicate function.Predicate[T]) bool {
 	gs.validateState()
 
 	var matched int64 = 1
@@ -699,7 +701,7 @@ func (gs *genericStream[T]) AllMatch(predicate Predicate[T]) bool {
 	return atomic.LoadInt64(&matched) == 1
 }
 
-func (gs *genericStream[T]) NoneMatch(predicate Predicate[T]) bool {
+func (gs *genericStream[T]) NoneMatch(predicate function.Predicate[T]) bool {
 	gs.validateState()
 
 	var matched int64

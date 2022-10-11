@@ -2,6 +2,8 @@
 
 package gostream
 
+import "github.com/YoshikiShibata/gostream/function"
+
 type BaseStream[T any] interface {
 	// Close closes this stream, causing all close handlers for this
 	// stream pipeline to be called.
@@ -18,7 +20,7 @@ type Stream[T any] interface {
 
 	// Filter returns a stream consisting of the elements of this stream
 	// that match given predicate.
-	Filter(predicate Predicate[T]) Stream[T]
+	Filter(predicate function.Predicate[T]) Stream[T]
 
 	// Sorted returns a stream consisting of the elements of this stream,
 	// according to the provided Less.
@@ -27,7 +29,7 @@ type Stream[T any] interface {
 	// Peek returns a stream consisting of the elements of this stream,
 	// additionally performing the provided action on each element as elements
 	// are consumed from the resulting steam.
-	Peek(action Consumer[T]) Stream[T]
+	Peek(action function.Consumer[T]) Stream[T]
 
 	// Limit returns a stream consisting of the elements of this stream,
 	// truncated to be no logner than maxSize in length.
@@ -40,7 +42,7 @@ type Stream[T any] interface {
 	Skip(n int) Stream[T]
 
 	// ForEach performs an action for each element of this stream.
-	ForEach(action Consumer[T])
+	ForEach(action function.Consumer[T])
 
 	// ToSlice returns a slice containing the elements of this stream.
 	ToSlice() []T
@@ -48,12 +50,12 @@ type Stream[T any] interface {
 	// Reduce performs a reduction on the elements of this stream, using
 	// the provided identity value and an accumulation function, and returns
 	// the reduced value.
-	Reduce(identity T, accumulator BinaryOperator[T]) T
+	Reduce(identity T, accumulator function.BinaryOperator[T]) T
 
 	// ReduceToOptional performs a reduction on the elements of this strem,
 	// using an associative accumulation function, and returns an Optional
 	// describing the reduced value, if nay.
-	ReduceToOptional(accumulator BinaryOperator[T]) *Optional[T]
+	ReduceToOptional(accumulator function.BinaryOperator[T]) *Optional[T]
 
 	// Min returns the minimum element of this stream according to the
 	// provided Less.
@@ -70,19 +72,19 @@ type Stream[T any] interface {
 	// predicate. May not evaluate the predicate on all elements if not
 	// necesary for determining the resulst. If the stream is empty then false
 	// is returned and the predicate is not evaluated.
-	AnyMatch(predicate Predicate[T]) bool
+	AnyMatch(predicate function.Predicate[T]) bool
 
 	// AllMatch returns whether all elements of this stream match the provided
 	// predicated. May not evaluate the predicate on all elements if not
 	// necessary. If the stream is empty then true is returned and the
 	// predicate is not evaluated.
-	AllMatch(predicate Predicate[T]) bool
+	AllMatch(predicate function.Predicate[T]) bool
 
 	// NoneMatch returns whether no elements of this stream match the provide
 	// predicate. May not evaluate the predicate on all elements if not
 	// necessary for determing the result. If the stream is empty then true is
 	// returned and predicate is not evaluated.
-	NoneMatch(predicate Predicate[T]) bool
+	NoneMatch(predicate function.Predicate[T]) bool
 
 	// FindFirst returns an Optional describing the first element of this
 	// stream or an empty Optional if the stream is empty.
