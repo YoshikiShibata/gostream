@@ -5,12 +5,11 @@ package gostream
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"sort"
 	"strconv"
 	"testing"
 	"time"
-
-	"golang.org/x/exp/slices"
 )
 
 func TestStream_MapFunc(t *testing.T) {

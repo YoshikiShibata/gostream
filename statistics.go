@@ -5,8 +5,6 @@ package gostream
 import (
 	"fmt"
 	"math"
-
-	"github.com/YoshikiShibata/gostream/alg"
 )
 
 type SummaryStatistics[T Number] struct {
@@ -28,15 +26,15 @@ func NewSummaryStatistics[T Number]() *SummaryStatistics[T] {
 func (i *SummaryStatistics[T]) accept(value T) {
 	i.count++
 	i.sum += int64(value)
-	i.min = alg.Min(i.min, int64(value))
-	i.max = alg.Max(i.max, int64(value))
+	i.min = min(i.min, int64(value))
+	i.max = max(i.max, int64(value))
 }
 
 func (i *SummaryStatistics[T]) combine(other *SummaryStatistics[T]) {
 	i.count += other.count
 	i.sum += other.sum
-	i.min = alg.Min(i.min, other.min)
-	i.max = alg.Max(i.max, other.max)
+	i.min = min(i.min, other.min)
+	i.max = max(i.max, other.max)
 }
 
 func (i *SummaryStatistics[T]) GetCount() int64 {

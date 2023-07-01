@@ -24,7 +24,7 @@ type Stream[T any] interface {
 
 	// Sorted returns a stream consisting of the elements of this stream,
 	// according to the provided Less.
-	Sorted(less Less[T]) Stream[T]
+	Sorted(cmp func(a, b T) int) Stream[T]
 
 	// Peek returns a stream consisting of the elements of this stream,
 	// additionally performing the provided action on each element as elements

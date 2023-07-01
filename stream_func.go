@@ -3,10 +3,9 @@
 package gostream
 
 import (
+	"cmp"
 	"sort"
 	"sync"
-
-	"golang.org/x/exp/constraints"
 
 	"github.com/YoshikiShibata/gostream/function"
 )
@@ -212,7 +211,7 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
-func Sorted[T constraints.Ordered](stream Stream[T]) Stream[T] {
+func Sorted[T cmp.Ordered](stream Stream[T]) Stream[T] {
 	s := stream.(*genericStream[T])
 	s.validateState()
 
