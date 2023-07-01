@@ -5,6 +5,7 @@ package gostream
 import (
 	"fmt"
 	"runtime"
+	"slices"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -247,7 +248,7 @@ func (gs *genericStream[T]) ForEach(action function.Consumer[T]) {
 	wg.Wait()
 }
 
-func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
+func (gs *genericStream[T]) Sorted(cmp func(a, b T) int) Stream[T] {
 	gs.validateState()
 
 	var dataSlice []T
@@ -278,9 +279,12 @@ func (gs *genericStream[T]) Sorted(less Less[T]) Stream[T] {
 		}
 	}
 
-	sort.Slice(dataSlice, func(i, j int) bool {
-		return less(dataSlice[i], dataSlice[j])
-	})
+	slices.SortFunc(dataSlice, cmp)
+	/*
+		sort.Slice(dataSlice, func(i, j int) bool {
+			return less(dataSlice[i], dataSlice[j])
+		})
+	*/
 
 	return Of(dataSlice...)
 }

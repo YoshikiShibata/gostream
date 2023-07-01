@@ -4,18 +4,19 @@ package gostream
 
 import (
 	"bufio"
+	"cmp"
 	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
-	"golang.org/x/exp/slices"
 	"golang.org/x/text/language"
 	"golang.org/x/text/language/display"
 )
@@ -98,9 +99,9 @@ func TestExample_00(t *testing.T) {
 
 	t.Run("Sorted", func(t *testing.T) {
 		tt := t
-		Of(words...).Sorted(func(t1, t2 string) bool {
+		Of(words...).Sorted(func(t1, t2 string) int {
 			// reversed
-			return len(t2) < len(t1)
+			return cmp.Compare(t2, t1)
 		}).Limit(10).ForEach(func(t string) {
 			tt.Logf("%s ", t)
 		})
@@ -220,8 +221,14 @@ func TestExample_00(t *testing.T) {
 			keySet = append(keySet, k)
 		}
 		result := Of(keySet...).Sorted(
-			func(k1, k2 string) bool {
-				return freq[k1] > freq[k2]
+			func(k1, k2 string) int {
+				switch {
+				case freq[k1] == freq[k2]:
+					return 0
+				case freq[k1] > freq[k2]:
+					return -1
+				}
+				return 1
 			}).Limit(10).ToSlice()
 
 		t.Logf("result : %v\n", result)

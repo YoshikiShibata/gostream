@@ -4,13 +4,11 @@ package gostream
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"testing"
-
-	"golang.org/x/exp/slices"
-	// "github.com/YoshikiShibata/gostream/slices"
 )
 
 func TestCollectors_ToSliceCollector(t *testing.T) {

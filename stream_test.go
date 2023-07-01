@@ -3,6 +3,7 @@
 package gostream
 
 import (
+	"cmp"
 	"math/rand"
 	"sort"
 	"testing"
@@ -117,8 +118,8 @@ func TestStream_Sorted(t *testing.T) {
 				s = s.Parallel()
 			}
 
-			result := s.Sorted(func(t1, t2 int) bool {
-				return t1 < t2
+			result := s.Sorted(func(t1, t2 int) int {
+				return cmp.Compare(t1, t2)
 			}).ToSlice()
 
 			if !slices.Equal(result, want) {
@@ -152,8 +153,8 @@ func TestStream_Peek(t *testing.T) {
 				peekedChan <- t
 			}
 
-			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
-				return t1 < t2
+			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) int {
+				return cmp.Compare(t1, t2)
 			}).ToSlice()
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
@@ -178,8 +179,8 @@ func TestStream_Peek(t *testing.T) {
 				peekedChan <- t
 			}
 
-			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) bool {
-				return t1 < t2
+			result := s.Peek(peekFunc).Sorted(func(t1, t2 int) int {
+				return cmp.Compare(t1, t2)
 			}).ToSlice()
 
 			if !slices.Equal(result, want) {
