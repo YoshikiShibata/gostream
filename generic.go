@@ -52,7 +52,7 @@ func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 		prevDone: gs.prevDone,
 
 		nextReq:  make(chan struct{}, gs.parallelCount),
-		nextData: make(chan orderedData[T], gs.parallelCount),
+		nextData: make(chan orderedData[T], gs.parallelCount*2),
 	}
 }
 
