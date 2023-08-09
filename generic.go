@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"runtime"
 	"slices"
-	"sort"
 	"sync"
 	"sync/atomic"
 
@@ -280,12 +279,6 @@ func (gs *genericStream[T]) Sorted(cmp func(a, b T) int) Stream[T] {
 	}
 
 	slices.SortFunc(dataSlice, cmp)
-	/*
-		sort.Slice(dataSlice, func(i, j int) bool {
-			return less(dataSlice[i], dataSlice[j])
-		})
-	*/
-
 	return Of(dataSlice...)
 }
 
@@ -425,8 +418,14 @@ func (gs *genericStream[T]) ToSlice() []T {
 	close(results)
 
 	// sort
-	sort.Slice(ods, func(i, j int) bool {
-		return ods[i].order < ods[j].order
+	slices.SortFunc(ods, func(a, b orderedData[T]) int {
+		if a.order == b.order {
+			return 0
+		}
+		if a.order < b.order {
+			return -1
+		}
+		return 1
 	})
 
 	// copy sorted result to []T

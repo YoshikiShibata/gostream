@@ -4,7 +4,7 @@ package gostream
 
 import (
 	"cmp"
-	"sort"
+	"slices"
 	"sync"
 
 	"github.com/YoshikiShibata/gostream/function"
@@ -229,10 +229,15 @@ func Sorted[T cmp.Ordered](stream Stream[T]) Stream[T] {
 	}
 	close(prevReq)
 
-	sort.Slice(dataSlice, func(i, j int) bool {
-		return dataSlice[i] < dataSlice[j]
+	slices.SortFunc(dataSlice, func(a, b T) int {
+		if a == b {
+			return 0
+		}
+		if a < b {
+			return -1
+		}
+		return 1
 	})
-
 	return Of(dataSlice...)
 }
 
