@@ -25,6 +25,7 @@ type genericStream[T any] struct {
 	parallelCount int
 	ordered       bool
 
+	closeCount         int
 	terminalCloseCount int
 
 	prevReq  chan struct{}
@@ -44,6 +45,7 @@ func newGenericStream[T any](gs *genericStream[T]) *genericStream[T] {
 		parallel:      gs.parallel,
 		parallelCount: gs.parallelCount,
 
+		closeCount:         gs.parallelCount,
 		terminalCloseCount: gs.terminalCloseCount,
 
 		prevReq:  gs.nextReq,
@@ -79,8 +81,8 @@ func (gs *genericStream[T]) close() {
 		return
 	}
 
-	gs.parallelCount--
-	if gs.parallelCount > 0 {
+	gs.closeCount--
+	if gs.closeCount > 0 {
 		return
 	}
 
@@ -320,6 +322,7 @@ func (gs *genericStream[T]) Limit(maxSize int) Stream[T] {
 	// we don't process elements in parallel to limit the
 	// number of elements.
 	newGS.parallelCount = 1
+	newGS.closeCount = 1
 	go newGS.limit(maxSize)
 	return newGS
 }
@@ -362,6 +365,7 @@ func (gs *genericStream[T]) Skip(n int) Stream[T] {
 	// we don't process elements in parallel to limit the
 	// number of elements.
 	newGS.parallelCount = 1
+	newGS.closeCount = 1
 
 	go newGS.skip(n)
 	return newGS
