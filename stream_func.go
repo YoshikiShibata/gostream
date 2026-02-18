@@ -13,11 +13,22 @@ import (
 // Map returns a stream consisting of the results of applying the given
 // function to the elements of the given stream.
 func Map[T, R any](stream Stream[T], mapper function.Function[T, R]) Stream[R] {
+	if ss, ok := stream.(*seqStream[T]); ok {
+		upstream := ss.seq
+		return &seqStream[R]{
+			seq: func(yield func(R) bool) {
+				upstream(func(v T) bool {
+					return yield(mapper(v))
+				})
+			},
+		}
+	}
+
 	gs := stream.(*genericStream[T])
 	gs.validateState()
 
-	nextReq := make(chan struct{})
-	nextData := make(chan orderedData[R])
+	nextReq := make(chan struct{}, gs.parallelCount)
+	nextData := make(chan orderedData[R], gs.parallelCount*2)
 
 	closeCounter := gs.parallelCount
 	var lock sync.Mutex
@@ -73,6 +84,35 @@ func FlatMap[T, R any](
 	stream Stream[T],
 	mapper function.Function[T, Stream[R]],
 ) Stream[R] {
+	if ss, ok := stream.(*seqStream[T]); ok {
+		upstream := ss.seq
+		return &seqStream[R]{
+			seq: func(yield func(R) bool) {
+				upstream(func(v T) bool {
+					rStream := mapper(v)
+					stopped := false
+					if rss, ok := rStream.(*seqStream[R]); ok {
+						rss.seq(func(r R) bool {
+							if !yield(r) {
+								stopped = true
+								return false
+							}
+							return true
+						})
+					} else {
+						for _, r := range rStream.ToSlice() {
+							if !yield(r) {
+								stopped = true
+								break
+							}
+						}
+					}
+					return !stopped
+				})
+			},
+		}
+	}
+
 	gs := stream.(*genericStream[T])
 	gs.validateState()
 
@@ -101,7 +141,7 @@ func FlatMap[T, R any](
 					}
 
 					r := mapper(od.data)
-					rgs = r.(*genericStream[R])
+					rgs = asGenericStream(r)
 				}
 
 				rgs.nextReq <- struct{}{}
@@ -133,45 +173,36 @@ func FlatMap[T, R any](
 // Returns a sequential ordered stream whose elements are the specified
 // values.
 func Of[T any](data ...T) Stream[T] {
-	nextReq := make(chan struct{})
-	nextData := make(chan orderedData[T])
-	prevDone := make(chan struct{})
-
-	go func() {
-		i := 0
-		for range nextReq {
-			if i == len(data) {
-				close(nextData)
-				close(prevDone)
-				go func() {
-					for range nextReq {
-					}
-				}()
-				return
-			}
-			if i < len(data) {
-				nextData <- orderedData[T]{
-					order: uint64(i),
-					data:  data[i],
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {
+			for _, v := range data {
+				if !yield(v) {
+					return
 				}
-				i++
 			}
-		}
-		close(nextData)
-		close(prevDone)
-	}()
-
-	return &genericStream[T]{
-		parallelCount: 1,
-		prevDone:      prevDone,
-		nextReq:       nextReq,
-		nextData:      nextData,
+		},
 	}
 }
 
 // Distinct returns a stream consisting of the distinct elements
 // (according to ==) of this stream.
 func Distinct[T comparable](stream Stream[T]) Stream[T] {
+	if ss, ok := stream.(*seqStream[T]); ok {
+		upstream := ss.seq
+		return &seqStream[T]{
+			seq: func(yield func(T) bool) {
+				seen := make(map[T]struct{})
+				upstream(func(v T) bool {
+					if _, exists := seen[v]; exists {
+						return true
+					}
+					seen[v] = struct{}{}
+					return yield(v)
+				})
+			},
+		}
+	}
+
 	s := stream.(*genericStream[T])
 	s.validateState()
 
@@ -212,6 +243,25 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
 func Sorted[T cmp.Ordered](stream Stream[T]) Stream[T] {
+	if ss, ok := stream.(*seqStream[T]); ok {
+		upstream := ss.seq
+		return &seqStream[T]{
+			seq: func(yield func(T) bool) {
+				var data []T
+				upstream(func(v T) bool {
+					data = append(data, v)
+					return true
+				})
+				slices.Sort(data)
+				for _, v := range data {
+					if !yield(v) {
+						return
+					}
+				}
+			},
+		}
+	}
+
 	s := stream.(*genericStream[T])
 	s.validateState()
 
@@ -249,6 +299,15 @@ func Reduce[U, T any](
 	accumulator function.BiFunction[U, T, U],
 	combiner function.BinaryOperator[U],
 ) U {
+	if ss, ok := stream.(*seqStream[T]); ok {
+		result := identity
+		ss.seq(func(v T) bool {
+			result = accumulator(result, v)
+			return true
+		})
+		return result
+	}
+
 	s := stream.(*genericStream[T])
 	s.validateState()
 
@@ -293,6 +352,15 @@ func Collect[R, T any](
 	accumulator function.BiConsumer[R, T],
 	combiner function.BiConsumer[R, R],
 ) R {
+	if ss, ok := stream.(*seqStream[T]); ok {
+		result := supplier()
+		ss.seq(func(v T) bool {
+			accumulator(result, v)
+			return true
+		})
+		return result
+	}
+
 	s := stream.(*genericStream[T])
 	s.validateState()
 
@@ -350,57 +418,29 @@ func CollectByCollector[T, R, A any](
 
 // Empty returns an empty Stream
 func Empty[T any]() Stream[T] {
-	gs := &genericStream[T]{
-		parallelCount: 1,
-		nextReq:       make(chan struct{}),
-		nextData:      make(chan orderedData[T]),
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {},
 	}
-
-	go func() {
-		for range gs.nextReq {
-			// discard all requests
-		}
-	}()
-
-	close(gs.nextData)
-	return gs
 }
 
 // Iterate returns an infinite sequential ordered Stream produces by iterative
 // appliation of a function f to an initial element seed, producing a Stream
 // consisiting of seed, f(seed), f(f(seed)), etc.
 func Iterate[T any](seed T, f function.UnaryOperator[T]) Stream[T] {
-	gs := &genericStream[T]{
-		parallelCount: 1,
-		nextReq:       make(chan struct{}, goMaxProcs),
-		nextData:      make(chan orderedData[T], goMaxProcs),
-	}
-
-	go func() {
-		useSeed := true
-		nextValue := seed
-
-		order := uint64(0)
-		for range gs.nextReq {
-			if useSeed {
-				gs.nextData <- orderedData[T]{
-					order: order,
-					data:  seed,
-				}
-				useSeed = false
-			} else {
-				nextValue = f(nextValue)
-				gs.nextData <- orderedData[T]{
-					order: order,
-					data:  nextValue,
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {
+			v := seed
+			if !yield(v) {
+				return
+			}
+			for {
+				v = f(v)
+				if !yield(v) {
+					return
 				}
 			}
-			order++
-		}
-		close(gs.nextData)
-	}()
-
-	return gs
+		},
+	}
 }
 
 // IterateN returns a sequential ordered Stream produced by iterative
@@ -412,69 +452,61 @@ func IterateN[T any](
 	hasNext function.Predicate[T],
 	next function.UnaryOperator[T]) Stream[T] {
 
-	gs := &genericStream[T]{
-		parallelCount: 1,
-		nextReq:       make(chan struct{}),
-		nextData:      make(chan orderedData[T]),
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {
+			v := seed
+			for hasNext(v) {
+				if !yield(v) {
+					return
+				}
+				v = next(v)
+			}
+		},
 	}
-
-	go func() {
-		nextValue := seed
-		applyNext := false
-
-		order := uint64(0)
-		for range gs.nextReq {
-			if applyNext {
-				nextValue = next(nextValue)
-			}
-
-			if !hasNext(nextValue) {
-				break
-			}
-
-			gs.nextData <- orderedData[T]{
-				order: order,
-				data:  nextValue,
-			}
-			order++
-			applyNext = true
-		}
-		close(gs.nextData)
-	}()
-
-	return gs
 }
 
 // Generate returns an infinite sequential unordered stream where each element
 // is generated by the provided Supplier.  This is suitable for generating
 // constant streams, streams of random elements, etc.
 func Generate[T any](s function.Supplier[T]) Stream[T] {
-	gs := &genericStream[T]{
-		parallelCount: 1,
-		nextReq:       make(chan struct{}),
-		nextData:      make(chan orderedData[T]),
-	}
-
-	go func() {
-		order := uint64(0)
-		for range gs.nextReq {
-			gs.nextData <- orderedData[T]{
-				order: order,
-				data:  s(),
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {
+			for {
+				if !yield(s()) {
+					return
+				}
 			}
-			order++
-		}
-		close(gs.nextData)
-	}()
-
-	return gs
+		},
+	}
 }
 
 // Concat a lazily concatenated stream whose elements are all the elements of
 // the first stream followed by all the elements of the second stream.
 func Concat[T any](a, b Stream[T]) Stream[T] {
-	ags := a.(*genericStream[T])
-	bgs := b.(*genericStream[T])
+	if ass, aOk := a.(*seqStream[T]); aOk {
+		if bss, bOk := b.(*seqStream[T]); bOk {
+			aSeq := ass.seq
+			bSeq := bss.seq
+			return &seqStream[T]{
+				seq: func(yield func(T) bool) {
+					stopped := false
+					aSeq(func(v T) bool {
+						if !yield(v) {
+							stopped = true
+							return false
+						}
+						return true
+					})
+					if !stopped {
+						bSeq(yield)
+					}
+				},
+			}
+		}
+	}
+
+	ags := asGenericStream(a)
+	bgs := asGenericStream(b)
 	ags.validateState()
 	bgs.validateState()
 
@@ -526,6 +558,15 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 
 // Returns the sum of elements in this stream.
 func Sum[T Number](stream Stream[T]) T {
+	if ss, ok := stream.(*seqStream[T]); ok {
+		var sum T
+		ss.seq(func(v T) bool {
+			sum += v
+			return true
+		})
+		return sum
+	}
+
 	gs := stream.(*genericStream[T])
 	gs.validateState()
 
