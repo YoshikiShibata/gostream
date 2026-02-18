@@ -19,13 +19,47 @@ type seqStream[T any] struct {
 func (s *seqStream[T]) Close() {}
 
 func (s *seqStream[T]) Parallel() Stream[T] {
-	return s.toGenericStream().Parallel()
+	// Directly create a parallel genericStream from the iter.Seq source.
+	// This eliminates the intermediate drain goroutines that
+	// genericStream.Parallel() would otherwise create.
+	nextReq := make(chan struct{}, goMaxProcs)
+	nextData := make(chan orderedData[T], goMaxProcs*2)
+	prevDone := make(chan struct{})
+
+	upstream := s.seq
+	go func() {
+		order := uint64(0)
+		upstream(func(v T) bool {
+			_, ok := <-nextReq
+			if !ok {
+				return false
+			}
+			nextData <- orderedData[T]{order: order, data: v}
+			order++
+			return true
+		})
+		close(nextData)
+		close(prevDone)
+		go func() {
+			for range nextReq {
+			}
+		}()
+	}()
+
+	return &genericStream[T]{
+		parallel:           true,
+		parallelCount:      goMaxProcs,
+		terminalCloseCount: goMaxProcs,
+		prevDone:           prevDone,
+		nextReq:            nextReq,
+		nextData:           nextData,
+	}
 }
 
 // toGenericStream converts a seqStream to a channel-based genericStream.
 func (s *seqStream[T]) toGenericStream() *genericStream[T] {
-	nextReq := make(chan struct{})
-	nextData := make(chan orderedData[T])
+	nextReq := make(chan struct{}, goMaxProcs)
+	nextData := make(chan orderedData[T], goMaxProcs*2)
 	prevDone := make(chan struct{})
 
 	upstream := s.seq

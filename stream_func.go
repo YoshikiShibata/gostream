@@ -27,8 +27,8 @@ func Map[T, R any](stream Stream[T], mapper function.Function[T, R]) Stream[R] {
 	gs := stream.(*genericStream[T])
 	gs.validateState()
 
-	nextReq := make(chan struct{})
-	nextData := make(chan orderedData[R])
+	nextReq := make(chan struct{}, gs.parallelCount)
+	nextData := make(chan orderedData[R], gs.parallelCount*2)
 
 	closeCounter := gs.parallelCount
 	var lock sync.Mutex

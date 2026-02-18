@@ -164,8 +164,8 @@ func (gs *genericStream[T]) Parallel() Stream[T] {
 	newGS.parallel = true
 	newGS.parallelCount = goMaxProcs
 	newGS.terminalCloseCount = goMaxProcs
-	newGS.nextReq = make(chan struct{}, gs.parallelCount)
-	newGS.nextData = make(chan orderedData[T], gs.parallelCount)
+	newGS.nextReq = make(chan struct{}, goMaxProcs)
+	newGS.nextData = make(chan orderedData[T], goMaxProcs*2)
 
 	parallelCount := newGS.parallelCount
 	for i := 0; i < parallelCount; i++ {
