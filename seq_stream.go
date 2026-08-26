@@ -18,6 +18,10 @@ type seqStream[T any] struct {
 
 func (s *seqStream[T]) Close() {}
 
+func (s *seqStream[T]) Sequential() streamImpl[T] { return s }
+
+func (s *seqStream[T]) IsParallel() bool { return false }
+
 func (s *seqStream[T]) Parallel() streamImpl[T] {
 	// Directly create a parallel genericStream from the iter.Seq source.
 	// This eliminates the intermediate drain goroutines that
@@ -179,6 +183,38 @@ func (s *seqStream[T]) Skip(n int) streamImpl[T] {
 				if skipped < n {
 					skipped++
 					return true
+				}
+				return yield(v)
+			})
+		},
+	}
+}
+
+func (s *seqStream[T]) TakeWhile(predicate function.Predicate[T]) streamImpl[T] {
+	upstream := s.seq
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {
+			upstream(func(v T) bool {
+				if !predicate(v) {
+					return false
+				}
+				return yield(v)
+			})
+		},
+	}
+}
+
+func (s *seqStream[T]) DropWhile(predicate function.Predicate[T]) streamImpl[T] {
+	upstream := s.seq
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {
+			dropping := true
+			upstream(func(v T) bool {
+				if dropping {
+					if predicate(v) {
+						return true
+					}
+					dropping = false
 				}
 				return yield(v)
 			})

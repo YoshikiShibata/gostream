@@ -93,6 +93,91 @@ func mapImpl[T, R any](impl streamImpl[T], mapper function.Function[T, R]) strea
 	}
 }
 
+// mapMultiImpl applies mapper to each element of impl. The mapper emits
+// zero or more R values via the provided emit callback, all of which
+// appear in the resulting streamImpl[R]. It is used by the
+// Stream[T].MapMulti generic method.
+func mapMultiImpl[T, R any](
+	impl streamImpl[T],
+	mapper func(t T, emit func(R)),
+) streamImpl[R] {
+	if ss, ok := impl.(*seqStream[T]); ok {
+		upstream := ss.seq
+		return &seqStream[R]{
+			seq: func(yield func(R) bool) {
+				stopped := false
+				upstream(func(v T) bool {
+					mapper(v, func(r R) {
+						if stopped {
+							return
+						}
+						if !yield(r) {
+							stopped = true
+						}
+					})
+					return !stopped
+				})
+			},
+		}
+	}
+
+	gs := impl.(*genericStream[T])
+	gs.validateState()
+
+	nextReq := make(chan struct{})
+	nextData := make(chan orderedData[R])
+
+	go func() {
+		var buffered []R
+		bufIdx := 0
+		order := uint64(0)
+
+		for range nextReq {
+			// If we still have buffered outputs from the previous input,
+			// emit one and wait for the next request.
+			if bufIdx < len(buffered) {
+				nextData <- orderedData[R]{order: order, data: buffered[bufIdx]}
+				order++
+				bufIdx++
+				continue
+			}
+
+			// Otherwise pull from upstream until the mapper produces at
+			// least one output, or upstream is exhausted.
+			for {
+				gs.nextReq <- struct{}{}
+				od, ok := <-gs.nextData
+				if !ok {
+					close(nextData)
+					close(gs.nextReq)
+					go func() {
+						for range nextReq {
+						}
+					}()
+					return
+				}
+				buffered = buffered[:0]
+				bufIdx = 0
+				mapper(od.data, func(r R) {
+					buffered = append(buffered, r)
+				})
+				if len(buffered) > 0 {
+					nextData <- orderedData[R]{order: order, data: buffered[bufIdx]}
+					order++
+					bufIdx++
+					break
+				}
+			}
+		}
+	}()
+
+	return &genericStream[R]{
+		parallelCount: 1,
+		nextReq:       nextReq,
+		nextData:      nextData,
+	}
+}
+
 // flatMapImpl applies mapper to each element of impl and flattens the resulting
 // streams into a single streamImpl[R]. It is used by the Stream[T].FlatMap
 // generic method and by the package-level FlatMap function.

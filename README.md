@@ -27,6 +27,8 @@ Java style.
 - `Peek`
 - `Limit`
 - `Skip`
+- `TakeWhile`
+- `DropWhile`
 - `ForEach`
 - `ToSlice`
 - `Reduce`
@@ -40,6 +42,9 @@ Java style.
 - `FindFirst`
 - `FindAny`
 - `Parallel`
+- `Sequential`
+- `IsParallel`
+- `OnClose`
 - `Close`
 
 Thanks to Go 1.27 generic methods, `Stream[T]` also provides the following
@@ -47,6 +52,7 @@ methods whose type parameter differs from the element type `T`:
 
 - `Map[R any](mapper Function[T, R]) Stream[R]`
 - `FlatMap[R any](mapper Function[T, Stream[R]]) Stream[R]`
+- `MapMulti[R any](mapper func(t T, emit func(R))) Stream[R]`
 - `ReduceWith[U any](identity U, accumulator BiFunction[U, T, U], combiner BinaryOperator[U]) U`
 - `Collect[R any](supplier Supplier[R], accumulator BiConsumer[R, T], combiner BiConsumer[R, R]) R`
 
@@ -98,6 +104,63 @@ runes := gostream.Of("your", "boat").
 // runes == ['y' 'o' 'u' 'r' 'b' 'o' 'a' 't']
 ```
 
+### MapMulti — emit 0/1/many outputs per input
+
+```go
+// Duplicate every element (2-to-many).
+got := gostream.Of(1, 2, 3).
+    MapMulti(func(v int, emit func(int)) {
+        emit(v)
+        emit(v * 10)
+    }).
+    ToSlice()
+// got == [1 10 2 20 3 30]
+
+// Filter via 0-or-1 emission (many-to-0-or-1). Cheaper than FlatMap
+// because no intermediate Stream[R] is built per input.
+odd := gostream.Of(1, 2, 3, 4, 5).
+    MapMulti(func(v int, emit func(int)) {
+        if v%2 == 1 {
+            emit(v)
+        }
+    }).
+    ToSlice()
+// odd == [1 3 5]
+```
+
+### OnClose — register close handlers (e.g. for FileLines)
+
+```go
+// Close handlers run in registration order when Close() is called.
+s := gostream.Of(1, 2, 3).
+    OnClose(func() { log.Println("first") }).
+    OnClose(func() { log.Println("second") })
+defer s.Close()
+
+_ = s.Filter(func(v int) bool { return v > 1 }).Count()
+// After the terminal op, s.Close() (via defer) prints "first" then "second".
+```
+
+Handlers registered on a source stream are propagated to every derived
+stream, so `defer s.Close()` on any point in the pipeline fires the
+same handler set exactly once.
+
+### TakeWhile / DropWhile
+
+```go
+// TakeWhile: prefix of elements matching the predicate.
+prefix := gostream.Of(1, 2, 3, 4, 5, 1, 2).
+    TakeWhile(func(v int) bool { return v < 4 }).
+    ToSlice()
+// prefix == [1 2 3]
+
+// DropWhile: everything after the initial matching prefix.
+rest := gostream.Of(1, 2, 3, 4, 5, 1, 2).
+    DropWhile(func(v int) bool { return v < 4 }).
+    ToSlice()
+// rest == [4 5 1 2]
+```
+
 ### Parallel execution
 
 ```go
@@ -107,6 +170,18 @@ primes := gostream.RangeClosed[int64](2, 1e6).
     Map(func(i int64) *big.Int { return big.NewInt(i) }).
     Filter(func(i *big.Int) bool { return i.ProbablyPrime(1) }).
     Count()
+```
+
+### Sequential / IsParallel
+
+```go
+s := gostream.Of(1, 2, 3).Parallel()
+_ = s.IsParallel() // true
+
+// Switch back to sequential when a downstream operation must run in
+// encounter order.
+seq := s.Sequential()
+_ = seq.IsParallel() // false
 ```
 
 ### `ReduceWith[U]` — accumulating into a different type

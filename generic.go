@@ -177,6 +177,30 @@ func (gs *genericStream[T]) Parallel() streamImpl[T] {
 	return newGS
 }
 
+func (gs *genericStream[T]) Sequential() streamImpl[T] {
+	gs.validateState()
+
+	if !gs.parallel {
+		return gs
+	}
+
+	newGS := newGenericStream(gs)
+	newGS.parallel = false
+	newGS.parallelCount = 1
+	newGS.closeCount = 1
+	newGS.terminalCloseCount = 1
+	newGS.nextReq = make(chan struct{}, 1)
+	newGS.nextData = make(chan orderedData[T], 2)
+
+	go newGS.drain()
+
+	return newGS
+}
+
+func (gs *genericStream[T]) IsParallel() bool {
+	return gs.parallel
+}
+
 func (gs *genericStream[T]) drain() {
 	for gs.getNextReq() {
 		data, ok := gs.getPrevData()
@@ -391,6 +415,78 @@ func (gs *genericStream[T]) skip(n int) {
 		gs.nextData <- data
 	}
 
+	gs.close()
+}
+
+func (gs *genericStream[T]) TakeWhile(predicate function.Predicate[T]) streamImpl[T] {
+	gs.validateState()
+
+	if gs.ordered && gs.parallelCount > 1 {
+		panic("TakeWhile doesn't support ordered parallel stream")
+	}
+
+	newGS := newGenericStream(gs)
+
+	// TakeWhile must be evaluated sequentially so that termination
+	// respects encounter order.
+	newGS.parallelCount = 1
+	newGS.closeCount = 1
+
+	go newGS.takeWhile(predicate)
+	return newGS
+}
+
+func (gs *genericStream[T]) takeWhile(predicate function.Predicate[T]) {
+	for gs.getNextReq() {
+		data, ok := gs.getPrevData()
+		if !ok {
+			gs.close()
+			return
+		}
+		if !predicate(data.data) {
+			gs.close()
+			return
+		}
+		gs.nextData <- data
+	}
+	gs.close()
+}
+
+func (gs *genericStream[T]) DropWhile(predicate function.Predicate[T]) streamImpl[T] {
+	gs.validateState()
+
+	if gs.ordered && gs.parallelCount > 1 {
+		panic("DropWhile doesn't support ordered parallel stream")
+	}
+
+	newGS := newGenericStream(gs)
+
+	// DropWhile must be evaluated sequentially so that the boundary
+	// between dropped and retained elements respects encounter order.
+	newGS.parallelCount = 1
+	newGS.closeCount = 1
+
+	go newGS.dropWhile(predicate)
+	return newGS
+}
+
+func (gs *genericStream[T]) dropWhile(predicate function.Predicate[T]) {
+	dropping := true
+	for gs.getNextReq() {
+		for {
+			data, ok := gs.getPrevData()
+			if !ok {
+				gs.close()
+				return
+			}
+			if dropping && predicate(data.data) {
+				continue
+			}
+			dropping = false
+			gs.nextData <- data
+			break
+		}
+	}
 	gs.close()
 }
 
