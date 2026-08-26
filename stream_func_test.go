@@ -34,7 +34,7 @@ func TestStream_MapFunc(t *testing.T) {
 				s = s.Parallel()
 			}
 
-			result := Map(s, strconv.Itoa).ToSlice()
+			result := s.Map(strconv.Itoa).ToSlice()
 
 			if !slices.Equal(result, want) {
 				t.Errorf("result is %v, want %v", result, want)
@@ -126,7 +126,7 @@ func TestStream_ReduceFunc(t *testing.T) {
 					s = s.Parallel()
 				}
 
-				sum := Reduce(s,
+				sum := s.ReduceWith(
 					0,                                   // identity
 					func(u, t int) int { return u + t }, // accumulator
 					func(u, t int) int { return u + t }, // combiner
@@ -160,7 +160,7 @@ func TestStream_ReduceFunc(t *testing.T) {
 					s = s.Parallel()
 				}
 
-				sum := Reduce(s,
+				sum := s.ReduceWith(
 					0, // identity
 					func(u int, t string) int {
 						tVal, err := strconv.Atoi(t)
@@ -203,7 +203,7 @@ func TestStream_CollectFunc(t *testing.T) {
 			}
 
 			// Action
-			result := Collect(s,
+			result := s.Collect(
 				func() *[]int { // supplier
 					return &[]int{}
 				},
@@ -357,9 +357,8 @@ func TestStream_FlatMapFunc(t *testing.T) {
 		return Of(runes...)
 	}
 
-	result := FlatMap(
-		Of("abc", "d", "efgh", "ijklmn"),
-		mapToRuneStream).ToSlice()
+	result := Of("abc", "d", "efgh", "ijklmn").
+		FlatMap(mapToRuneStream).ToSlice()
 	want := "abcdefghijklmn"
 
 	if len(result) != len(want) {

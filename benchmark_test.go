@@ -71,7 +71,7 @@ func BenchmarkMap(b *testing.B) {
 					if parallel {
 						s = s.Parallel()
 					}
-					Map(s, func(v int) int {
+					s.Map(func(v int) int {
 						return v * 2
 					}).Count()
 				}
@@ -91,7 +91,7 @@ func BenchmarkFlatMap(b *testing.B) {
 					if parallel {
 						s = s.Parallel()
 					}
-					FlatMap(s, func(v int) Stream[int] {
+					s.FlatMap(func(v int) Stream[int] {
 						return Of(v, v+1, v+2)
 					}).Count()
 				}
@@ -513,9 +513,9 @@ func BenchmarkPipelineFilterMapReduce(b *testing.B) {
 					if parallel {
 						s = s.Parallel()
 					}
-					Map(s.Filter(func(v int) bool {
+					s.Filter(func(v int) bool {
 						return v%2 == 0
-					}), func(v int) int {
+					}).Map(func(v int) int {
 						return v * 3
 					}).Reduce(0, func(a, b int) int {
 						return a + b
