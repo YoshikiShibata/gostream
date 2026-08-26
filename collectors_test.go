@@ -99,8 +99,7 @@ func TestCollectors_MappingCollector(t *testing.T) {
 			JoiningCollector(" ")))
 
 	want := CollectByCollector(
-		Map(Of(data...),
-			strconv.Itoa),
+		Of(data...).Map(strconv.Itoa),
 		JoiningCollector(" "))
 
 	if result != want {
@@ -114,10 +113,9 @@ func TestCollectors_FlatMappingCollector(t *testing.T) {
 		Of(data...),
 		FlatMappingCollector(
 			func(t int) Stream[string] {
-				return Map(
-					Iterate(t, func(v int) int { return v + 1 }).Limit(10),
-					strconv.Itoa,
-				)
+				return Iterate(t, func(v int) int { return v + 1 }).
+					Limit(10).
+					Map(strconv.Itoa)
 			},
 			JoiningCollector(" "),
 		),

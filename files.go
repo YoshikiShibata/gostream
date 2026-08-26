@@ -10,7 +10,7 @@ import (
 func FileLines(filepath string) (Stream[string], error) {
 	f, err := os.Open(filepath)
 	if err != nil {
-		return nil, err
+		return Stream[string]{}, err
 	}
 
 	input := bufio.NewScanner(f)
@@ -43,10 +43,10 @@ func FileLines(filepath string) (Stream[string], error) {
 		f.Close()
 	}()
 
-	return &genericStream[string]{
+	return Stream[string]{impl: &genericStream[string]{
 		parallelCount: 1,
 		prevDone:      prevDone,
 		nextReq:       nextReq,
 		nextData:      nextData,
-	}, nil
+	}}, nil
 }

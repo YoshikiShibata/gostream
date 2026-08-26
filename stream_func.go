@@ -10,10 +10,26 @@ import (
 	"github.com/YoshikiShibata/gostream/function"
 )
 
-// Map returns a stream consisting of the results of applying the given
-// function to the elements of the given stream.
-func Map[T, R any](stream Stream[T], mapper function.Function[T, R]) Stream[R] {
-	if ss, ok := stream.(*seqStream[T]); ok {
+// newSeqStream constructs an internal *seqStream[T] from data.
+// It is used to build the sequential implementation without wrapping
+// it in the exported Stream[T] struct.
+func newSeqStream[T any](data ...T) *seqStream[T] {
+	return &seqStream[T]{
+		seq: func(yield func(T) bool) {
+			for _, v := range data {
+				if !yield(v) {
+					return
+				}
+			}
+		},
+	}
+}
+
+// mapImpl applies mapper to each element of impl and returns a new
+// streamImpl[R]. It is used by the Stream[T].Map generic method and by
+// the package-level Map function.
+func mapImpl[T, R any](impl streamImpl[T], mapper function.Function[T, R]) streamImpl[R] {
+	if ss, ok := impl.(*seqStream[T]); ok {
 		upstream := ss.seq
 		return &seqStream[R]{
 			seq: func(yield func(R) bool) {
@@ -24,7 +40,7 @@ func Map[T, R any](stream Stream[T], mapper function.Function[T, R]) Stream[R] {
 		}
 	}
 
-	gs := stream.(*genericStream[T])
+	gs := impl.(*genericStream[T])
 	gs.validateState()
 
 	nextReq := make(chan struct{}, gs.parallelCount)
@@ -77,21 +93,21 @@ func Map[T, R any](stream Stream[T], mapper function.Function[T, R]) Stream[R] {
 	}
 }
 
-// FlatMap returns a stream consisting of the results of replacing each
-// element of stream with the contents of mapped stream produced by applying
-// the provided mapping function to each element.
-func FlatMap[T, R any](
-	stream Stream[T],
+// flatMapImpl applies mapper to each element of impl and flattens the resulting
+// streams into a single streamImpl[R]. It is used by the Stream[T].FlatMap
+// generic method and by the package-level FlatMap function.
+func flatMapImpl[T, R any](
+	impl streamImpl[T],
 	mapper function.Function[T, Stream[R]],
-) Stream[R] {
-	if ss, ok := stream.(*seqStream[T]); ok {
+) streamImpl[R] {
+	if ss, ok := impl.(*seqStream[T]); ok {
 		upstream := ss.seq
 		return &seqStream[R]{
 			seq: func(yield func(R) bool) {
 				upstream(func(v T) bool {
 					rStream := mapper(v)
 					stopped := false
-					if rss, ok := rStream.(*seqStream[R]); ok {
+					if rss, ok := rStream.impl.(*seqStream[R]); ok {
 						rss.seq(func(r R) bool {
 							if !yield(r) {
 								stopped = true
@@ -113,7 +129,7 @@ func FlatMap[T, R any](
 		}
 	}
 
-	gs := stream.(*genericStream[T])
+	gs := impl.(*genericStream[T])
 	gs.validateState()
 
 	nextReq := make(chan struct{})
@@ -141,7 +157,7 @@ func FlatMap[T, R any](
 					}
 
 					r := mapper(od.data)
-					rgs = asGenericStream(r)
+					rgs = asGenericStream(r.impl)
 				}
 
 				rgs.nextReq <- struct{}{}
@@ -170,26 +186,18 @@ func FlatMap[T, R any](
 	}
 }
 
-// Returns a sequential ordered stream whose elements are the specified
+// Of returns a sequential ordered stream whose elements are the specified
 // values.
 func Of[T any](data ...T) Stream[T] {
-	return &seqStream[T]{
-		seq: func(yield func(T) bool) {
-			for _, v := range data {
-				if !yield(v) {
-					return
-				}
-			}
-		},
-	}
+	return Stream[T]{impl: newSeqStream(data...)}
 }
 
 // Distinct returns a stream consisting of the distinct elements
 // (according to ==) of this stream.
 func Distinct[T comparable](stream Stream[T]) Stream[T] {
-	if ss, ok := stream.(*seqStream[T]); ok {
+	if ss, ok := stream.impl.(*seqStream[T]); ok {
 		upstream := ss.seq
-		return &seqStream[T]{
+		return Stream[T]{impl: &seqStream[T]{
 			seq: func(yield func(T) bool) {
 				seen := make(map[T]struct{})
 				upstream(func(v T) bool {
@@ -200,10 +208,10 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 					return yield(v)
 				})
 			},
-		}
+		}}
 	}
 
-	s := stream.(*genericStream[T])
+	s := stream.impl.(*genericStream[T])
 	s.validateState()
 
 	gs := &genericStream[T]{
@@ -237,15 +245,15 @@ func Distinct[T comparable](stream Stream[T]) Stream[T] {
 		gs.close()
 	}()
 
-	return gs
+	return Stream[T]{impl: gs}
 }
 
 // Sorted returns a stream consisting of the elements of stream, sorted
 // according to natural order.
 func Sorted[T cmp.Ordered](stream Stream[T]) Stream[T] {
-	if ss, ok := stream.(*seqStream[T]); ok {
+	if ss, ok := stream.impl.(*seqStream[T]); ok {
 		upstream := ss.seq
-		return &seqStream[T]{
+		return Stream[T]{impl: &seqStream[T]{
 			seq: func(yield func(T) bool) {
 				var data []T
 				upstream(func(v T) bool {
@@ -259,10 +267,10 @@ func Sorted[T cmp.Ordered](stream Stream[T]) Stream[T] {
 					}
 				}
 			},
-		}
+		}}
 	}
 
-	s := stream.(*genericStream[T])
+	s := stream.impl.(*genericStream[T])
 	s.validateState()
 
 	prevReq := s.nextReq
@@ -291,15 +299,16 @@ func Sorted[T cmp.Ordered](stream Stream[T]) Stream[T] {
 	return Of(dataSlice...)
 }
 
-// Reduce performs a reduction on the elements of stream, using the provided
-// identity, accumulation and combining functions.
-func Reduce[U, T any](
-	stream Stream[T],
+// reduceWithImpl performs a reduction on impl into a value of type U, using
+// the provided identity, accumulator and combiner. It is used by the
+// Stream[T].ReduceWith generic method and by the package-level Reduce function.
+func reduceWithImpl[T, U any](
+	impl streamImpl[T],
 	identity U,
 	accumulator function.BiFunction[U, T, U],
 	combiner function.BinaryOperator[U],
 ) U {
-	if ss, ok := stream.(*seqStream[T]); ok {
+	if ss, ok := impl.(*seqStream[T]); ok {
 		result := identity
 		ss.seq(func(v T) bool {
 			result = accumulator(result, v)
@@ -308,7 +317,7 @@ func Reduce[U, T any](
 		return result
 	}
 
-	s := stream.(*genericStream[T])
+	s := impl.(*genericStream[T])
 	s.validateState()
 
 	prevReq := s.nextReq
@@ -343,16 +352,16 @@ func Reduce[U, T any](
 	return result
 }
 
-// Collect performs mutable reduction opertion on the elements of stream. A
-// mutable result is one in which reduced value is a mutable result container
-// such as a slice.
-func Collect[R, T any](
-	stream Stream[T],
+// collectImpl performs mutable reduction on impl into a value of type R.
+// It is used by the Stream[T].Collect generic method and by the
+// package-level Collect function.
+func collectImpl[T, R any](
+	impl streamImpl[T],
 	supplier function.Supplier[R],
 	accumulator function.BiConsumer[R, T],
 	combiner function.BiConsumer[R, R],
 ) R {
-	if ss, ok := stream.(*seqStream[T]); ok {
+	if ss, ok := impl.(*seqStream[T]); ok {
 		result := supplier()
 		ss.seq(func(v T) bool {
 			accumulator(result, v)
@@ -361,7 +370,7 @@ func Collect[R, T any](
 		return result
 	}
 
-	s := stream.(*genericStream[T])
+	s := impl.(*genericStream[T])
 	s.validateState()
 
 	prevReq := s.nextReq
@@ -399,9 +408,9 @@ func Collect[R, T any](
 
 // CollectByCollector performs mutable reduction operation on the elements of
 // stream using a Collector. A Collector encapsulates the functions used as
-// arguments to Collect(Supplier, BiConsumer, BiConsumer), allowing for
-// resuse of collection strategies and composition of collect operations such
-// as multiple-level grouping or partitioning.
+// arguments to Stream[T].Collect(Supplier, BiConsumer, BiConsumer), allowing
+// for reuse of collection strategies and composition of collect operations
+// such as multiple-level grouping or partitioning.
 func CollectByCollector[T, R, A any](
 	stream Stream[T],
 	collector *Collector[T, A, R],
@@ -412,22 +421,22 @@ func CollectByCollector[T, R, A any](
 		_ = collector.Combiner()(r, t)
 	}
 
-	a := Collect(stream, supplier, accumulator, combiner)
+	a := stream.Collect(supplier, accumulator, combiner)
 	return collector.Finisher()(a)
 }
 
 // Empty returns an empty Stream
 func Empty[T any]() Stream[T] {
-	return &seqStream[T]{
+	return Stream[T]{impl: &seqStream[T]{
 		seq: func(yield func(T) bool) {},
-	}
+	}}
 }
 
 // Iterate returns an infinite sequential ordered Stream produces by iterative
 // appliation of a function f to an initial element seed, producing a Stream
 // consisiting of seed, f(seed), f(f(seed)), etc.
 func Iterate[T any](seed T, f function.UnaryOperator[T]) Stream[T] {
-	return &seqStream[T]{
+	return Stream[T]{impl: &seqStream[T]{
 		seq: func(yield func(T) bool) {
 			v := seed
 			if !yield(v) {
@@ -440,7 +449,7 @@ func Iterate[T any](seed T, f function.UnaryOperator[T]) Stream[T] {
 				}
 			}
 		},
-	}
+	}}
 }
 
 // IterateN returns a sequential ordered Stream produced by iterative
@@ -452,7 +461,7 @@ func IterateN[T any](
 	hasNext function.Predicate[T],
 	next function.UnaryOperator[T]) Stream[T] {
 
-	return &seqStream[T]{
+	return Stream[T]{impl: &seqStream[T]{
 		seq: func(yield func(T) bool) {
 			v := seed
 			for hasNext(v) {
@@ -462,14 +471,14 @@ func IterateN[T any](
 				v = next(v)
 			}
 		},
-	}
+	}}
 }
 
 // Generate returns an infinite sequential unordered stream where each element
 // is generated by the provided Supplier.  This is suitable for generating
 // constant streams, streams of random elements, etc.
 func Generate[T any](s function.Supplier[T]) Stream[T] {
-	return &seqStream[T]{
+	return Stream[T]{impl: &seqStream[T]{
 		seq: func(yield func(T) bool) {
 			for {
 				if !yield(s()) {
@@ -477,17 +486,17 @@ func Generate[T any](s function.Supplier[T]) Stream[T] {
 				}
 			}
 		},
-	}
+	}}
 }
 
 // Concat a lazily concatenated stream whose elements are all the elements of
 // the first stream followed by all the elements of the second stream.
 func Concat[T any](a, b Stream[T]) Stream[T] {
-	if ass, aOk := a.(*seqStream[T]); aOk {
-		if bss, bOk := b.(*seqStream[T]); bOk {
+	if ass, aOk := a.impl.(*seqStream[T]); aOk {
+		if bss, bOk := b.impl.(*seqStream[T]); bOk {
 			aSeq := ass.seq
 			bSeq := bss.seq
-			return &seqStream[T]{
+			return Stream[T]{impl: &seqStream[T]{
 				seq: func(yield func(T) bool) {
 					stopped := false
 					aSeq(func(v T) bool {
@@ -501,12 +510,12 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 						bSeq(yield)
 					}
 				},
-			}
+			}}
 		}
 	}
 
-	ags := asGenericStream(a)
-	bgs := asGenericStream(b)
+	ags := asGenericStream(a.impl)
+	bgs := asGenericStream(b.impl)
 	ags.validateState()
 	bgs.validateState()
 
@@ -553,12 +562,12 @@ func Concat[T any](a, b Stream[T]) Stream[T] {
 		gs.close()
 	}()
 
-	return gs
+	return Stream[T]{impl: gs}
 }
 
 // Returns the sum of elements in this stream.
 func Sum[T Number](stream Stream[T]) T {
-	if ss, ok := stream.(*seqStream[T]); ok {
+	if ss, ok := stream.impl.(*seqStream[T]); ok {
 		var sum T
 		ss.seq(func(v T) bool {
 			sum += v
@@ -567,7 +576,7 @@ func Sum[T Number](stream Stream[T]) T {
 		return sum
 	}
 
-	gs := stream.(*genericStream[T])
+	gs := stream.impl.(*genericStream[T])
 	gs.validateState()
 
 	if !gs.parallel {

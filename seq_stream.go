@@ -18,7 +18,7 @@ type seqStream[T any] struct {
 
 func (s *seqStream[T]) Close() {}
 
-func (s *seqStream[T]) Parallel() Stream[T] {
+func (s *seqStream[T]) Parallel() streamImpl[T] {
 	// Directly create a parallel genericStream from the iter.Seq source.
 	// This eliminates the intermediate drain goroutines that
 	// genericStream.Parallel() would otherwise create.
@@ -90,9 +90,9 @@ func (s *seqStream[T]) toGenericStream() *genericStream[T] {
 	}
 }
 
-// asGenericStream converts a Stream to a *genericStream, converting
+// asGenericStream converts a streamImpl to a *genericStream, converting
 // seqStream to genericStream if necessary.
-func asGenericStream[T any](s Stream[T]) *genericStream[T] {
+func asGenericStream[T any](s streamImpl[T]) *genericStream[T] {
 	if ss, ok := s.(*seqStream[T]); ok {
 		return ss.toGenericStream()
 	}
@@ -101,7 +101,7 @@ func asGenericStream[T any](s Stream[T]) *genericStream[T] {
 
 // --- Intermediate operations ---
 
-func (s *seqStream[T]) Filter(predicate function.Predicate[T]) Stream[T] {
+func (s *seqStream[T]) Filter(predicate function.Predicate[T]) streamImpl[T] {
 	upstream := s.seq
 	return &seqStream[T]{
 		seq: func(yield func(T) bool) {
@@ -115,7 +115,7 @@ func (s *seqStream[T]) Filter(predicate function.Predicate[T]) Stream[T] {
 	}
 }
 
-func (s *seqStream[T]) Sorted(cmp func(a, b T) int) Stream[T] {
+func (s *seqStream[T]) Sorted(cmp func(a, b T) int) streamImpl[T] {
 	upstream := s.seq
 	return &seqStream[T]{
 		seq: func(yield func(T) bool) {
@@ -134,7 +134,7 @@ func (s *seqStream[T]) Sorted(cmp func(a, b T) int) Stream[T] {
 	}
 }
 
-func (s *seqStream[T]) Peek(action function.Consumer[T]) Stream[T] {
+func (s *seqStream[T]) Peek(action function.Consumer[T]) streamImpl[T] {
 	upstream := s.seq
 	return &seqStream[T]{
 		seq: func(yield func(T) bool) {
@@ -146,7 +146,7 @@ func (s *seqStream[T]) Peek(action function.Consumer[T]) Stream[T] {
 	}
 }
 
-func (s *seqStream[T]) Limit(maxSize int) Stream[T] {
+func (s *seqStream[T]) Limit(maxSize int) streamImpl[T] {
 	if maxSize < 0 {
 		panic(fmt.Sprintf("maxSize must not be negative: %v", maxSize))
 	}
@@ -170,7 +170,7 @@ func (s *seqStream[T]) Limit(maxSize int) Stream[T] {
 	}
 }
 
-func (s *seqStream[T]) Skip(n int) Stream[T] {
+func (s *seqStream[T]) Skip(n int) streamImpl[T] {
 	upstream := s.seq
 	return &seqStream[T]{
 		seq: func(yield func(T) bool) {

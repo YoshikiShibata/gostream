@@ -44,14 +44,14 @@ func TestExample_00(t *testing.T) {
 
 	t.Run("Map", func(t *testing.T) {
 		tt := t
-		Map(Of(words...), strings.ToLower).
+		Of(words...).Map(strings.ToLower).
 			Limit(10).ForEach(func(t string) {
 			tt.Logf("%s ", t)
 		})
 	})
 
 	t.Run("first runes", func(t *testing.T) {
-		firstRunes := Map(Of(words...), func(t string) rune {
+		firstRunes := Of(words...).Map(func(t string) rune {
 			for _, r := range t {
 				return r
 			}
@@ -67,7 +67,7 @@ func TestExample_00(t *testing.T) {
 	}
 
 	t.Run("FlatMap", func(t *testing.T) {
-		result := FlatMap(Of("your", "boat"), runeStream).ToSlice()
+		result := Of("your", "boat").FlatMap(runeStream).ToSlice()
 
 		resultStr := fmt.Sprintf("%c", result)
 		want := "[y o u r b o a t]"
@@ -144,11 +144,11 @@ func TestExample_00(t *testing.T) {
 	})
 
 	t.Run("Reduce", func(t *testing.T) {
-		result1 := Sum(Map(Of(words...).Parallel(),
+		result1 := Sum(Of(words...).Parallel().Map(
 			func(s string) int { return len(s) },
 		))
 
-		result2 := Reduce(Of(words...).Parallel(),
+		result2 := Of(words...).Parallel().ReduceWith(
 			0, // identity
 			func(t int, s string) int {
 				return t + int(len(s))
@@ -419,7 +419,7 @@ func TestExample_08(t *testing.T) {
 
 // π(1e6) is the number of primes less than or equal to 1e6
 func π_parallel(b *testing.B) int {
-	noOfPrimeNumbers := Map(RangeClosed[int64](2, 1e6).Parallel(), func(i int64) *big.Int {
+	noOfPrimeNumbers := RangeClosed[int64](2, 1e6).Parallel().Map(func(i int64) *big.Int {
 		return big.NewInt(i)
 	}).Filter(func(i *big.Int) bool {
 		return i.ProbablyPrime(1)
@@ -429,7 +429,7 @@ func π_parallel(b *testing.B) int {
 }
 
 func π(b *testing.B) int {
-	noOfPrimeNumbers := Map(RangeClosed[int64](2, 1e6), func(i int64) *big.Int {
+	noOfPrimeNumbers := RangeClosed[int64](2, 1e6).Map(func(i int64) *big.Int {
 		return big.NewInt(i)
 	}).Filter(func(i *big.Int) bool {
 		return i.ProbablyPrime(1)
