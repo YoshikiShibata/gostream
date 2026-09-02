@@ -5,7 +5,7 @@ package gostream
 import (
 	"cmp"
 	"math/rand"
-	"sort"
+	slices0 "slices"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 
 func TestStream_ForEach(t *testing.T) {
 	data := make([]int, 1000)
-	for i := 0; i < len(data); i++ {
+	for i := range data {
 		data[i] = i
 	}
 
@@ -200,9 +200,7 @@ func TestStream_Peek(t *testing.T) {
 				}
 			}
 
-			sort.Slice(peeked, func(i, j int) bool {
-				return peeked[i] < peeked[j]
-			})
+			slices0.Sort(peeked)
 			if !slices.Equal(peeked, want) {
 				t.Errorf("peeked is %v, want %v", peeked, want)
 			}

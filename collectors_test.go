@@ -5,7 +5,6 @@ package gostream
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -35,9 +34,7 @@ func TestCollectors_ToSliceCollector(t *testing.T) {
 
 			result := CollectByCollector(s, ToSliceCollector[int]())
 			if parallel {
-				sort.Slice(result, func(i, j int) bool {
-					return result[i] < result[j]
-				})
+				slices.Sort(result)
 			}
 			if !slices.Equal(result, data) {
 				t.Errorf("result is %v, want %v", result, data)
@@ -122,7 +119,7 @@ func TestCollectors_FlatMappingCollector(t *testing.T) {
 	)
 
 	var data2 []string
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		data2 = append(data2, strconv.Itoa(i))
 	}
 	want := strings.Join(data2, " ")

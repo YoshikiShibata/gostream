@@ -67,7 +67,7 @@ func mapImpl[T, R any](impl streamImpl[T], mapper function.Function[T, R]) strea
 	}
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			for range nextReq {
 				gs.nextReq <- struct{}{}
@@ -411,7 +411,7 @@ func reduceWithImpl[T, U any](
 	results := make(chan U)
 
 	parallelCount := s.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			result := identity
 			for {
@@ -427,7 +427,7 @@ func reduceWithImpl[T, U any](
 	}
 
 	result := identity
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		result = combiner(result, <-results)
 	}
 
@@ -464,7 +464,7 @@ func collectImpl[T, R any](
 	results := make(chan R)
 
 	parallelCount := s.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 
 			result := supplier()
@@ -481,7 +481,7 @@ func collectImpl[T, R any](
 	}
 
 	result := supplier()
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		combiner(result, <-results)
 	}
 
@@ -674,7 +674,7 @@ func Sum[T Number](stream Stream[T]) T {
 
 	sums := make(chan T)
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			var sum T
 			gs.terminalOp(func(t T) {
@@ -685,7 +685,7 @@ func Sum[T Number](stream Stream[T]) T {
 	}
 
 	var sum T
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		sum += <-sums
 	}
 	close(sums)

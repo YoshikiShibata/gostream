@@ -360,7 +360,7 @@ func TestExample_RandomNumbers(t *testing.T) {
 		const length = 20
 		interval := int64(math.MaxInt64 / (length / 2))
 		classifier := func(value int64) int {
-			for i := 0; i < length; i++ {
+			for i := range length {
 				lower := math.MinInt64 + int64(i)*interval
 				upper := lower + interval
 
