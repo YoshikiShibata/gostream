@@ -5,7 +5,7 @@ Since Go 1.27 supports **generic methods** on concrete types, `Stream[T]` is
 now a struct so that operations like `Map`/`FlatMap` can be chained in the
 Java style.
 
-**CAUTION: this package is under construction**
+**CAUTION**: This package was not intended for practical use. I created it to explore whether a Java-like Stream API could be implemented using Go generics, and I do not recommend using it in production.
 
 ## `Stream` struct
 
