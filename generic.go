@@ -170,7 +170,7 @@ func (gs *genericStream[T]) Parallel() streamImpl[T] {
 	newGS.nextData = make(chan orderedData[T], goMaxProcs*2)
 
 	parallelCount := newGS.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go newGS.drain()
 	}
 
@@ -219,7 +219,7 @@ func (gs *genericStream[T]) Filter(predicate function.Predicate[T]) streamImpl[T
 	newGS := newGenericStream(gs)
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go newGS.filter(predicate)
 	}
 	return newGS
@@ -263,12 +263,10 @@ func (gs *genericStream[T]) ForEach(action function.Consumer[T]) {
 	var wg sync.WaitGroup
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
-		wg.Add(1)
-		go func() {
+	for range parallelCount {
+		wg.Go(func() {
 			gs.terminalOp(action)
-			wg.Done()
-		}()
+		})
 	}
 	wg.Wait()
 }
@@ -286,7 +284,7 @@ func (gs *genericStream[T]) Sorted(cmp func(a, b T) int) streamImpl[T] {
 		slices := make(chan []T)
 
 		parallelCount := gs.parallelCount
-		for i := 0; i < parallelCount; i++ {
+		for range parallelCount {
 			go func() {
 				var slice []T
 
@@ -298,7 +296,7 @@ func (gs *genericStream[T]) Sorted(cmp func(a, b T) int) streamImpl[T] {
 			}()
 		}
 
-		for i := 0; i < parallelCount; i++ {
+		for range parallelCount {
 			slice := <-slices
 			dataSlice = append(dataSlice, slice...)
 		}
@@ -314,7 +312,7 @@ func (gs *genericStream[T]) Peek(action function.Consumer[T]) streamImpl[T] {
 	newGS := newGenericStream(gs)
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go newGS.peek(action)
 	}
 
@@ -497,7 +495,7 @@ func (gs *genericStream[T]) ToSlice() []T {
 
 	// collect in parallel
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			var ods []orderedData[T]
 
@@ -511,7 +509,7 @@ func (gs *genericStream[T]) ToSlice() []T {
 
 	// combine all results
 	var ods []orderedData[T]
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		result := <-results
 		ods = append(ods, result...)
 	}
@@ -545,7 +543,7 @@ func (gs *genericStream[T]) Reduce(
 
 	results := make(chan T)
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			result := identity
 
@@ -557,7 +555,7 @@ func (gs *genericStream[T]) Reduce(
 	}
 
 	result := identity
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		result = accumulator(result, <-results)
 	}
 	return result
@@ -571,7 +569,7 @@ func (gs *genericStream[T]) ReduceToOptional(
 	results := make(chan *Optional[T])
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			foundAny := false
 			var result T
@@ -595,7 +593,7 @@ func (gs *genericStream[T]) ReduceToOptional(
 
 	foundAny := false
 	var result T
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		oResult := <-results
 		if !oResult.IsPresent() {
 			continue
@@ -620,7 +618,7 @@ func (gs *genericStream[T]) Min(less Less[T]) *Optional[T] {
 	results := make(chan *Optional[T])
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			foundAny := false
 			var result T
@@ -644,7 +642,7 @@ func (gs *genericStream[T]) Min(less Less[T]) *Optional[T] {
 
 	foundAny := false
 	var result T
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		oResult := <-results
 		if !oResult.IsPresent() {
 			continue
@@ -673,7 +671,7 @@ func (gs *genericStream[T]) Max(less Less[T]) *Optional[T] {
 	results := make(chan *Optional[T])
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			foundAny := false
 			var result T
@@ -697,7 +695,7 @@ func (gs *genericStream[T]) Max(less Less[T]) *Optional[T] {
 
 	foundAny := false
 	var result T
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		oResult := <-results
 		if !oResult.IsPresent() {
 			continue
@@ -726,7 +724,7 @@ func (gs *genericStream[T]) Count() int {
 	results := make(chan int)
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		go func() {
 			count := 0
 			gs.terminalOp(func(t T) { count++ })
@@ -735,7 +733,7 @@ func (gs *genericStream[T]) Count() int {
 	}
 
 	count := 0
-	for i := 0; i < parallelCount; i++ {
+	for range parallelCount {
 		count += <-results
 	}
 
@@ -745,17 +743,15 @@ func (gs *genericStream[T]) Count() int {
 func (gs *genericStream[T]) AnyMatch(predicate function.Predicate[T]) bool {
 	gs.validateState()
 
-	var matched int64
+	var matched atomic.Int64
 	var wg sync.WaitGroup
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range parallelCount {
+		wg.Go(func() {
 
 			gs.terminalOpMatch(func(t T) bool {
-				if atomic.LoadInt64(&matched) == 1 {
+				if matched.Load() == 1 {
 					return false
 				}
 
@@ -763,14 +759,14 @@ func (gs *genericStream[T]) AnyMatch(predicate function.Predicate[T]) bool {
 					return true // continue
 				}
 
-				atomic.StoreInt64(&matched, 1)
+				matched.Store(1)
 				return false
 			})
-		}()
+		})
 	}
 	wg.Wait()
 
-	return atomic.LoadInt64(&matched) == 1
+	return matched.Load() == 1
 }
 
 func (gs *genericStream[T]) AllMatch(predicate function.Predicate[T]) bool {
@@ -780,10 +776,8 @@ func (gs *genericStream[T]) AllMatch(predicate function.Predicate[T]) bool {
 	var wg sync.WaitGroup
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range parallelCount {
+		wg.Go(func() {
 
 			gs.terminalOpMatch(func(t T) bool {
 				if atomic.LoadInt64(&matched) == 0 {
@@ -796,7 +790,7 @@ func (gs *genericStream[T]) AllMatch(predicate function.Predicate[T]) bool {
 				return false
 			})
 
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -807,32 +801,30 @@ func (gs *genericStream[T]) AllMatch(predicate function.Predicate[T]) bool {
 func (gs *genericStream[T]) NoneMatch(predicate function.Predicate[T]) bool {
 	gs.validateState()
 
-	var matched int64
+	var matched atomic.Int64
 	var wg sync.WaitGroup
 
 	parallelCount := gs.parallelCount
-	for i := 0; i < parallelCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range parallelCount {
+		wg.Go(func() {
 
 			gs.terminalOpMatch(func(t T) bool {
-				if atomic.LoadInt64(&matched) == 1 {
+				if matched.Load() == 1 {
 					return false
 				}
 
 				if !predicate(t) {
 					return true // continue
 				}
-				atomic.StoreInt64(&matched, 1)
+				matched.Store(1)
 				return false
 			})
-		}()
+		})
 	}
 
 	wg.Wait()
 
-	return atomic.LoadInt64(&matched) != 1
+	return matched.Load() != 1
 }
 
 func (gs *genericStream[T]) FindFirst() *Optional[T] {
@@ -866,11 +858,9 @@ func (gs *genericStream[T]) FindAny() *Optional[T] {
 
 	parallelCount := gs.parallelCount
 	results := make(chan T, parallelCount)
-	for i := 0; i < parallelCount; i++ {
-		wg.Add(1)
+	for range parallelCount {
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			gs.terminalOpMatch(func(t T) bool {
 				if atomic.LoadInt64(&found) == 1 {
@@ -883,7 +873,7 @@ func (gs *genericStream[T]) FindAny() *Optional[T] {
 				return false
 			})
 
-		}()
+		})
 	}
 	wg.Wait()
 

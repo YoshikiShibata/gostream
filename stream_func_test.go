@@ -300,9 +300,7 @@ func TestStream_GenerateFunc(t *testing.T) {
 			results = append(results, v)
 		})
 
-		sort.Slice(results, func(i, j int) bool {
-			return results[i] < results[j]
-		})
+		slices.Sort(results)
 
 		preValue := results[0]
 		for i := 1; i < len(results); i++ {
@@ -376,7 +374,7 @@ func TestStream_RangeFunc(t *testing.T) {
 	if len(rangeValues) != 100 {
 		t.Fatalf("len(rangeValues) is %v, want 100", len(rangeValues))
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		if rangeValues[i] != i {
 			t.Errorf("rangeValues[%d] is %d, want %[1]d", i, rangeValues[i])
 		}
@@ -389,7 +387,7 @@ func TestStream_RangeClosedFunc(t *testing.T) {
 	if len(rangeValues) != 100 {
 		t.Fatalf("len(rangeValues) is %v, want 100", len(rangeValues))
 	}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		if rangeValues[i] != i {
 			t.Errorf("rangeValues[%d] is %d, want %[1]d", i, rangeValues[i])
 		}

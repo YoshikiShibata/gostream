@@ -5,7 +5,7 @@ import "testing"
 func TestBuilder(t *testing.T) {
 	var builder Builder[int]
 
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		builder.Add(i)
 	}
 	want := 0
